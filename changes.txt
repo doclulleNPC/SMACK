@@ -1,0 +1,1110 @@
+============================================================================
+19-12-1999
+
+* Have changed compatibility, weapon pref and chat macro commands in
+  g_cmd.c: now "built" by functions rather than using hundreds of
+  "CONSOLE_VARIABLE" macros. Similar system used for the savegame
+  "variables" in mn_menus.c.
+
+* Fixed savegames being saved when not in a game: ie when
+  gamestate != GS_LEVEL.
+
+* Fixed r_data.c loading counter to fill in for extra dots when not
+  building the translucency map.
+
+* Fixed G_Signature() in g_game.c which was still using gameepisode
+  and gamemap rather than gamemapname
+
+============================================================================
+14-12-1999
+
+* Menu practically finished: all left to do is the key bindings menu
+  which will be done once I re-write the key binding system. Also
+  added mn_misc.c which includes new 'widgets' such as automap colour
+  selection, help screens(which inclued support for the boom enhanced
+  menus) and popup messages (quit doom, end game etc)
+
+* Savegame 'variables' added: savegame_0 to savegame_6. These are
+  string variables: when the value of them is changed, the current
+  level is saved to that slot.
+
+* Switched to using emacs rather than ms-dos editor: this is
+  infinitely better imo. Also beautified most of the code I have added.
+
+* Added hubs by popular demand. p_hubs includes most of the hub code.
+  New FraggleScript function changehublevel which goes to another
+  level in the hub. When changing levels in the hub, the current
+  level is saved to a temporary file and catalogued. When returning
+  to that level the file is looked up and restored. If it is not in
+  the catalogue it is loaded normally. 'Seamless' code saves the
+  player's position relative to a sector with a particular tag and
+  then restores the player's position in the new level relative to
+  a corresponding sector. Thus it is possible for level authors to
+  create hubs where the transition between levels is practically
+  'seamless'.
+
+* Changed the screen melt effect to move exactly as the original did:
+  although the new re-written melt 'engine' is still used, the
+  screen 'moves' in the same way as the original.
+
+* Added new types of wait function to FraggleScript:
+	- wait - was already there before, wait for a particular time
+	- tagwait - wait until all sectors with a particular tag have
+		stopped moving
+	- scriptwait - wait for all instances of a particular script
+		to finish
+
+* Got latest version of the Start map from Afterglow which is practically
+  finished. All that needs working on is the Scripting in it. I have
+  included a menu screen which appears the first time you run SMMU
+  which asks if you would rather use the start map or menu in the future
+  to start games. My only concern is that it may take too long to
+  select the 'nightmare' skill level.
+
+* Improved swirling water effect: as well as 'swirling' the texture,
+  parts are stretched and compressed which creates a much better effect.
+
+* Improved makefile to build two versions of SMMU in linux: one for X
+  and one for SVGA. The X version currently suffers from a strange bug
+  which I have not yet been able to find the cause of. I find that the
+  call to XOpenDisplay causes a segviol. If you are
+  reading this and have found the cause of the bug, _please_ email me
+  and let me know so I can fix it because this is one bug that has
+  been pissing me off majorly!
+
+* Re-wrote (practically) the console buffered command system to use
+  linked lists rather than static arrays.
+
+============================================================================
+17-11-1999
+
+* Menu now quite advanced: includes ability to change variables now.
+  There are two menu item variable types: it_toggle and it_variable.
+  These are similar but differ in the way data is input into them:
+        - it_toggle is used for variables with a limited number of
+          values. If there are only two possible values then the
+          enter key is used to toggle, otherwise left and right is
+          used to set the value
+        - it_variable is for variables with large numbers of values.
+          The enter key is used to activate input of a new value.
+
+* Broke up menu into two modules: mn_menus.c (which holds all the
+  actual menu data) and mn_engin.c (the menu 'engine')
+
+* Rewrote the console command caching to used a linked list rather
+  than a fixed-length array. The code is much nicer now. Changed
+  so console commands are not _always_ buffered, but instead only
+  if they have the flag cf_buffered. Some commands have to be
+  buffered(v_mode, addfile, nullmodem, answer, dial)
+
+* Added all the compatibility flags for the menu
+
+* Changed d_arbitratenetgame when i noticed it was not working. I
+  recently upgraded one of my computers, so while it was in
+  d_arbitratenetgame sending out packets, the other was still in r_init.
+  When it finally got to d_arbitratenetgame it was flooded with packets
+  from the other computer. Changed so that packets are only broadcast
+  from the server when the function first starts, and subsequent packets
+  are only sent to machines which have acknowledged their readiness.
+
+* Fixed some coloured lighting problems again. If you put the chasecam
+  on, used the invisibility cheat and looked at a coloured lit area,
+  the sprite went that colour. Fixed by setting fuzzy draw to be selected
+  by the flags in the vissprite, NOT from a NULL colormap.
+
+* Fixed skin problems with player->mo sprites being set to NULL skin
+
+* Started a linux port! Moved system specific code (i_*) into DJGPP/
+  subdirectory and created another, linux/ for linux code. Modified
+  makefile to allow for multiple platforms.
+  I copied all the code from the DJGPP system specific code, then went
+  through all the functions and stripped out the code where neccesary.
+  I then filled in all the gaps with code from Colin Phipps' port,
+  lxdoom. Eventually, I managed to get a working port.
+  However, many things are not done:
+        * my version was for SVGALIB only. And slow. An X version will
+          definitely be neccesary.
+        * No sound(linux sound does not work on my PC, its not something
+          I can test)
+
+* Started experimenting with networking using TCP/IP. Managed to create
+  a working UDP send/receive program with features such as start server,
+  search for servers on network, ping server etc. Tried it on my network
+  and the Internet and it worked more or less fine. The only problem is
+  that of searching for servers, which was hit-and-miss. However, I don't
+  think that's a particularly big problem for when I develop SMMU.
+  I feel confident now that I will probably be able to write in TCP/IP
+  networking to SMMU when the time comes. It will be implemented in the
+  same way that the serial code is. When it does come, it will be easier
+  to start netgames for than any other port to date, IMO.
+
+* Created a FraggleScript adder (add_fs.exe) which automatically loads
+  a FraggleScript file into a wad. Released with source onto the net.
+
+* Moved to doomnation!
+
+============================================================================
+28-10-1999
+
+* Some positive response to the latest release: two other people have set
+  up "FraggleScript tutorial" websites dedicated to SMMU/FraggleScript.
+  Quasar is using the SMMU source for the Eternity TC and people on IRC
+  seem impressed. However, I didn't receive any emails about it (except
+  yesterday I got _one_ after I mentioned my lack of email response).
+  The people that have commented on it seem to like it
+
+* Abandoned my idea for the 'in-automap' style menu. I have instead proceeded
+  to make a more boom-style menu. I have already got this in a quite
+  advanced state: here's what I've done so far:
+
+        - stripped out all old code from m_menu.c: kept some functions
+          such as ticker, drawer etc but these were empty functions ready
+          to be filled in with my own code
+        - Some other functions such as fillbackscreen kept as some are
+          needed by other modules and some may be useful anyway
+        - Kept some important global variables which reside in m_menu.c
+        - Rewrote the drawer, based on a generalised table-style menu.
+          Created menu_t in m_menu.h, which includes all the properties
+          needed for the menus: flags (full-screen with background, show
+          skull rather than highlight etc) and menu items (an array of
+          menuitem_t's)
+        - Function pointer in menu_t allows for specialised drawers for
+          some menus - eg in player setup to draw a picture of the marine
+        - Console changed slightly - Can now do the following
+                "variable +"    -- increase value of variable by one
+                "variable -"    -- decrease value of variable by one
+                "variable /"    -- toggle variable value
+        - menuitem_t's hold the following information:
+                - menu item type - can be a variable, console command to
+                                run, unselectable text (it_info), a gap,
+                                menu title(centered)
+                - name -- name describing the item eg "screen size"
+                - data -- has a number of purposes: console command to run
+                                for it_runcmd, console variable name for
+                                it_variable
+                - patch -- the name of an alternate patch to use - if this
+                                is not NULL then the patch is drawn instead
+                                of the item name
+        - Added main menu back with extra option, "features".
+        - New game menu should be just like the original -- includes support
+                for Doom I and II, and also for the start map when
+                implemented
+        - Options menu reordered: each option has been categorised. There
+                are several categories now: key bindings, mouse, video,
+                sound, compatibility, enemies, weapons, hud, status bar,
+                automap. Options menu is full screen w/background
+        - New Features menu includes multiplayer, load wad, play demos,
+                about SMMU. Multiplayer menu allows you to start serial/modem
+                games, change chat strings and setup your player.
+        - it_variable split into two types:
+                it_toggle       -- can use left/right to change value of
+                                   variable(for non-boolean variables) or
+                                   press enter to toggle value (boolean only)
+                it_variable     -- must press enter to input new value
+        - Main menu uses a seperate drawer to draw the title, for
+          compatibility
+
+* Stil to do for menu:
+        - loads of menus still to do: key bindings, load game, automap,
+          compatibility, savegame, load wad, play demo, about, ...
+        - editing of strings, inputting of new value (currently loads of
+          menu variables cannot be changed, eg chat macros :( )
+        - Key bindings is the major obstacle. I'm planning to rewrite the
+          key binding system soon to use binding of keys to actions
+          (ie. quake style .. i know, i know)
+
+* Finished breaking up console commands. Added p_cmd.c for all the 'game'
+  variables: ie all the ones which are critical for multiplayer sync
+  Also c_cmd.c for all the basic console variables
+* Added three new player colours
+
+============================================================================
+13-10-1999
+
+* The main thing is that I finished integrating FraggleScript into SMMU
+  The FraggleScript source files are named t_???.c and t_???.h. These are:
+
+        t_func.c  --  contains all the FraggleScript 'functions'. Each
+                      Function has a corresponding 'handler' function in C,
+                      which is called when the function is called. The
+                      function arguments are stored in a C-command-line style
+                      t_argc, t_argv way. Functions are stored as variables
+                      in the global_script.
+        t_oper.c  --  handler functions for all of the different operators.
+                      There is an array there with all the different operators.
+        t_parse.c --  FraggleScript's core. This takes normal ascii text and
+                      breaks it into tokens, then uses a recursive-descent
+                      method to parse the expressions given to it.
+        t_prepro.c -- Preprocessor. Each script_t must be preprocessed before
+                      it can be run. The preprocessor goes through the
+                      script, blanks out comments, notes all section '{', '}'
+                      delimiters and stores all of the 'goto' labels (which
+                      are stored as variables). Finally it is 'dry-run': each
+                      statement is considered and the types for the
+                      section_t's found.
+        t_spec.c   -- All the 'special' features: if() statements, while()
+                      and for() loops, creating variables, etc. Loops are
+                      accomplished in a rather lame way but it works.
+                      Basically every { -- } delimiter pair is found by
+                      the preprocessor at the start. These are stored as
+                      section_t's in the script. When the parser finds
+                      a '}' it checks the section_t's and if it is a loop,
+                      jumps back to the beginning of the loop.
+        t_script.c -- Controls console commands, basic running of scripts
+                      etc. Scripts can be delayed, where the offset from the
+                      script start, local variables and so on are saved into
+                      a runningscript_t. These are stored in a chain and
+                      checked every tic. When the time comes, the script is
+                      restored and continued.
+                      Note that this means that not only can we have more
+                      than one script running at once, we can also have more
+                      than one of _the same_ script.
+        t_vari.c   -- Variables. There are 3 variable types in FraggleScript,
+                      int, string and mobj. Variables are stored in
+                      svariable_t's and hashed according to their name.
+                      Variables cannot exist alone: they must be stored in
+                      a script_t which is what led me to introduce script
+                      'levels'. (see below)
+
+  Each script is stored as a script_t. This contains a pointer to the data,
+  the script number, a hashed array of variables, all of the section_t's for
+  that script, etc. The problem of global and local variables led me to
+  introduce script 'levels' as shown:
+
+                global_script
+                      |
+                levelscript
+            /         |      \
+    scripts[1]  scripts[2]  scripts[3]  .. etc
+
+  The global_script is not actually a proper script, it merely contains
+  all of the 'game' global variables and function variables (ie. everything
+  that stays the same regardless of the level played).
+  The levelscript is just all of the data put in the wad under the
+  [scripts] section. When the level is loaded this script is executed.
+  This creates all of the global variables etc. It also defines all of the
+  individual scripts. Note that it is possible to place normal statements
+  in the levelscript, although I would advise keeping actions in individual
+  scripts and calling them using the startscript() function.
+
+  The scripts all have pointers to the 'parent' script: for the individual
+  scripts this points to the levelscript, and for the levelscript this is
+  the global_script. The global_script has no parent and hence this is NULL.
+  When a variable is looked up, the current_script (a pointer to the
+  currently running script) is first checked, then its parent, then its
+  parent, etc. This allows global and local variables in a quite
+  structured and generalised way.
+
+  All i need to do to finish it really is add more functions, and a lot of
+  these are already added.
+
+* p_setup.c saves pointers to all of the things spawned at level start.
+  These are stored in an array, 'spawnedthings'. This allows FraggleScript
+  users to refer to things in the level by their thing number.
+
+* Savegames improved: the savegames now save the following:
+        - Running scripts (t_script.c)
+        - spawnedthings list (see above)
+        - the levelscript and variables
+  This did require some minor changes. Some bits of code from existing
+  functions were moved into individual functions: most noticably the ones
+  which number all of the things in the level and then restore them
+  afterward. This is important as FraggleScript needs to save pointers to
+  things.
+
+* Re-organised console command. c_cmdlst.c and c_handle.c removed, the
+  individual commands have been moved to their appropriate individual
+  modules. I also added some useful defines to c_runcmd.h, so creating new
+  console commands is easier, eg:
+
+        CONSOLE_COMMAND(hello, cf_notnet)
+        {
+                C_Printf("hello!\n");
+        }
+
+  The C_AddCommand function is used to register commands. eg
+
+        C_AddCommand(hello);
+
+  note that this is actually a #define also for nicer looking code.
+
+* MBF allowed you to change the game speed, but you had to restart the game
+  to do this. Now you don't need to. Extra changes to d_net.c mean that the
+  console and menu run seperately from the game, so they run at the right
+  speed regardless of game speed.
+
+* Changed some of the sound code in s_sound.c. The sfxinfo_t's are stored in
+  a hash-table at startup. d_main.c checks for new sound lumps (beginning
+  'ds') and adds them to the hash-table as neccesary. This means that the
+  skin code is also somewhat nicer: there is no longer a need to create new
+  sfxinfo_t's inside p_skin.c. The main point to this, however, is to allow
+  playing of sounds from inside FraggleScript. New sounds (or originals) can
+  be played from inside sectors or from things.
+
+* P_KillMobj in p_inter.c globalised to allow killing of monsters from inside
+  scripts
+
+* I released a 'private beta' to a few people and they seemed impressed:
+  mystican, prower, mewse, zokum, afterglow. Also included smmutest.wad
+  which I have been using to develop FraggleScript.
+
+============================================================================
+22-9-1999
+
+I've done quite a bit recently:
+
+* Fixed the serial code again, basetic was not being reset. Now you can do
+  (just about) anything you want before you chose to play over a serial/modem
+  connection
+* Console command list 'shattered': the individual commands have been moved
+  to their appropriate modules. c_runcmd.c calls various functions in
+  different modules which add their commands. Also uses hashtable for
+  speed. g_cmd.c added for game console commands/vars
+* Various new variables added: snd_card, mus_card etc. I'm going thru the
+  original menus and adding them as console commands.
+  One interesting one is i_gamespeed: this does the same job as the
+  original MBF one, but can be set from the console without having to
+  restart the game. I can do this because I have the d_net.c ResetNet
+  function to reset all the tickers. Code added to ensure console/menu run
+  at the right speed when the game speed is changed.
+* Console command flag added: cf_handlerset. When this is set, the variable
+  itself is not changed in the console code: the handler is relied on to do
+  this.
+* Made the console 'tink' when it receives a '\a'. Increased size of printf
+  buffer in c_io.c
+* Video mode setting rearranged: rather than individual hires, pageflip,
+  vesa variables being stored in .cfg file, it is now stored by console
+  mode number. v_mode changed to a variable from a command.
+  Also split into two layers: platform-independent(v_misc.c) and platform
+  specific(i_video.c). videomode_t is defined in the platform specific
+  code and is used by both.
+  Code to detect for VESA support from legacy
+* Video functions rearranged: all my new stuff moved to new v_misc.c
+  functions there deal with: mode setting (platform independent), 
+  font stuff (text write), box drawing/loading pic, fps ticker.
+* FPS ticker rewritten. Now displays a scrolling graph to show the
+  framerate. Made platform-independent: v_misc.c
+* Made chasecam appear instantly: when you turn it on you no longer see it
+  shoot out of your body. Also removed the code to make it show you going
+  back in which was kinda hacked and didnt work anyway
+* Removed translucent gunflashes which were not good for TC's which
+  replaced the guns
+* Fixed savegames on new levels without the MAPxy, ExMy format.
+* FRAGGLESCRIPT! This is probably the most important thing to mention.
+  I have finished the dos version so I decided to start integrating it into
+  SMMU. Code in p_info.c loads the scripts from the level header resource
+  at the start of the level. This on its own is called the 'levelscript'.
+  This is run at the start of the level and statements in it define all of
+  the sub-scripts (script n {} .. ).
+
+  Code in t_script.c allows for pausing of scripts with the 'wait' function.
+  This means that you can have for example, a script running in the
+  background while you wander round a level. You can have more than one
+  script paused at once, infact you can have more than one of _the same_
+  script paused at once, each instance with its own set of local variables.
+
+  I have added a 'const' type which was not in the dos version, which allows
+  for constant values. I have started adding an 'include' function which
+  allows you to 'include' data from another WAD resource in the same way
+  C lets you include data from header files. This means I can create wad
+  resources containing all the thing numbers and so on.
+
+  Added a 'dot' operator which allows for a more object-orientated feel
+  to the language. In actual fact it is just a different way of running
+  a function. I merely include it to make the code look a bit nicer, for
+  example:
+
+                // display a message to the player who started the script
+        trigger.player.msg("hello");
+     looks nicer than
+        msg(player(trigger), "hello");
+
+  It's practically finished, I have to say. All I need to do is add the
+  neccesary functions and then it will rock =).
+
+============================================================================
+5-8-1999
+
+Got bug reports back from many different people via email. Basically fixed
+the bugs I got:
+
+* Sound too quiet (a common occurrence). Many people thought that the sound
+  was broken, although it was just so quiet that you couldn't hear it.
+  This was caused by me messing around with the sound code early in the
+  project. I had changed some of the code in I_SetMusicVolume and
+  I_SetSfxVolume. An easy fix.
+* Vertical sensitivity too high at the second setting.
+* Starting in graphics mode too early, no ctrl-c abort. You can now choose
+  from a menu to have SMMU start in text mode rather than the graphical
+  startup. Also changed some of the keyboard code so you can abort with
+  a ctrl-c on startup.
+* HUD: No status (kills/items/secrets). Togglable from console.
+* messages off toggle not working
+* extra \ in smmu.wad =)
+* pressing autorun key in console toggled autorun. autorun key was in
+  m_menu.c (weird)
+
+Anyway, they're all fixed, I've done a bit of work on other stuff as well:
+
+* slight tweaking of r_ripple.c
+* c_runcmd.c now always sets variables, the handler function if any is only
+  used to implement the change.
+* Some new console variables added (translucency etc).
+
+============================================================================
+25-7-1999
+
+It's my birthday! =). Anyway, I promised that I'd release a public beta of
+SMMU as a 'birthday beta'. Thought it would be sensible to bring the
+changelog up to date too.
+
+* hu_over.c added which contains the re-written 'overlay hud': ie. the
+  mini display which you see when you put it in fullscreen. I have made
+  a seperate module and basically just re-written the boom one. There are
+  a number of differences however, most notably that the titles (eg "health",
+  "armor" etc) are always white, and that the full names are given: eg:
+  "health" not "hel"
+
+* crosshair changed: now blue when pointing at friends. Also goes translucent
+  when there is no target to be less distracting.
+
+* demo 'walkcam' added which allows you to walk around levels while they are
+  playing. I'm not sure whether this needs to be improved or not. Currently,
+  you can walk through walls. May need some improving.
+
+* FraggleScript update: I now have it running functions properly, although
+  there are currently only 2 functions: "print" and "rnd". However, I think
+  all that I need to do is add loops/gotos and then I can start integrating
+  it into SMMU.
+
+* d_net.c / d_main.c changed. TryRunTics is now run regardless of whether
+  singletics is true or false. All the syncronous update stuff is now done
+  in TryRunTics. This also means that the console and menu always run at the
+  right speed regardless of the demo speed.
+
+* console command buffers added so that console commands are no longer run
+  instantly. This means that wads are now loaded 100% reliably. Also, the
+  bug with parts of the rendering appearing after changing video modes is
+  also fixed.
+
+* Support for Doom I wads under Doom II. This is really cool. When it cannot
+  find a texture on loading a level, it tries translating the texture into
+  a Doom II texture (assumes it is a Doom I texture).  
+
+* Got the current version of the start map from derek. This led to me making
+  the first change to the sound code. I noticed that the 3-D bridge 'clunked'
+  as you walked over/under it. I decided to implement the boom sector flags
+  which were designed to silence all moving sector sounds but were never
+  implemented. Modified the start map to try it out, and it worked fine.
+  The other sector flag was to silence all sound in a sector which now also
+  works.
+
+* The walkcam is the reason which led me to make the second change to the
+  sound code. Under the walkcam, as you walked around you would still hear
+  from the displayplayer's viewpoint rather than the camera. Some changes in
+  s_sound.c to make you hear from the camera instead.
+
+* fixed the disk icon which was 16x16, not 16x15 as the graphic actually is.
+  also offset wrongly. original doom had the same bug.
+
+* Sent derek a beta about a week/2 ago. He pointed out a number of bugs
+  which I quickly fixed:
+        - crashing in dos (a null pointer being dereferenced in the camera
+                sound code)
+        - loading wads using the 'map' command: like in legacy. you can now
+                do "map gothicdm.wad" and it will load gothicdm.wad and warp
+                to the first level.
+
+* menu code changed so that if there is a start map, you start there rather
+  than on map01.
+
+* skins fixed where once dying, the player would revert to the standard doom
+  skin. Fixed by adding a skin_t pointer in the mobj_t itself, which solved
+  the problem (once you die, the player_t * in your mobj is cleared, so it
+  no longer knew you were supposed to be a different skin)
+  This also led to a further problem: your body being crushed would change
+  you to a standing marine rather than a pool of blood (works by setting
+  your spritenum to the blood sprite and setting your sprite subnum to 0..
+  this meant that the spritenum was being set back to the skin spritenum
+  which left you as a standing person). Fixed.
+
+* Although the v_video.c 'loading' code put dots on the screen in text mode,
+  it did not draw the bounding [ ] brackets. This was still being done in
+  r_data.c. I moved the brackets to v_video.c and fixed it
+
+* d_main.c changed so that it no longer clears the screen. You can now see
+  how much memory has been allocated, etc. Also, in devparm mode it pauses
+  before setting graphics mode so you can read the messages.
+
+==============================================================================
+21-6-1999
+
+The exams are over.. wohoo! Anyway, I have also been doing work on SMMU
+during the exam period, I managed to do a few things to it.
+
+* The most important point to mention is that Derek MacDonald('Afterglow')
+  and Bob Satori('Mantic') have agreed to help me after the plea for help
+  on my webpage. Afterglow is a great level designer, I have seen some of
+  his SacrificeDM levels and they're great. Also, Satori is obviously a
+  very talented artist. He has sent me a sketch of a new title screen
+  he is designing for SMMU: set several seconds after the doom 2 title where
+  the marine is taking on the Cyberdemon hand-to-hand. He also sent me
+  640x400 versions of the doom I and II title screens which I have now
+  implemented into SMMU for hires mode.
+
+* Improved console. Most important is the introduction of C_Printf which
+  basically makes C_WriteText redundant. I have kept C_WriteText as a
+  #defined version of C_Puts for backward compatibility.
+
+  The other thing is the console network commands. I have changed the system.
+  Instead of sending the console entry number in the command list when
+  sending netcmds, it now sends a special unique netcmd number. There is
+  an enum in c_net.h, each command has an individual number/define. These
+  are then included in the command list and used for sending network commands.
+  This system is vital for when I break up the command list
+
+  Also, fixed: command history which recorded 'empty' commands
+
+* Fixed a network demo problem which was causing inconsistancies. It was
+  basically due to code in g_game.c which I had added to implement the
+  way in which whole ticcmds are used to transfer console commands when the
+  game is in console mode (mainly at startup). Various checks have to be
+  skipped, most importantly, consistancy checks, and also checks for pausing
+  the game. The whole-ticcmd system is still rather unstable, which is why
+  I have added #ifdefs to comment out all the code which implements this.
+  It is slower to start up, but more reliable.
+
+* Added all the neccesary console commands for monster behaviour, friends
+  etc. which means that all the neccesary data (i think) for netgames is
+  now sent. Under the boom code, SMMU runs in compatibility mode (again, I
+  think) so the compatibility data probably does not need to be sent.
+
+* Noticed another bug in SMMU, the console does not change the 'default_'
+  versions of game variables. Because of this, if you change variables in
+  the console, they will not be saved to the .cfg file. I should fix this
+  eventually, but I would rather wait until I have properly split up the
+  command list until I do this.
+
+* A rather drastic change to the wad loading. The 'lumpinfo' array is now
+  an array of 'lumpinfo_t *'s rather than 'lumpinfo_t's. This is primarily
+  for dynamic wad loading. The problem with the wad loading was that it was
+  slow, mainly because with each new wad loaded, the lumpcache was cleared.
+  I realised that for reliable dynamic wad loading, it was going to be
+  neccesary to put the cache pointer inside the lumpinfo_t. So I did.
+  Unfortunately, all wad entries loaded with PU_CACHE messed up, as when
+  they were cleared from memory, the zone memory code went into the
+  lumpinfo_t (which had been moved -- coalescing marked resources),
+  and cleared the pointer for the wrong lumpinfo_t. Basically, all the
+  pointers got messed up. Under the new system, the lumpinfo_t is not moved
+  in memory, instead only the pointer to it is moved in the list, so it
+  works fine.
+
+  The new system loads wads much more reliably, although there are _still_
+  some problems with it. The addfile command is called by the console
+  responder, which is called from NetUpdate, which can be called at any
+  time, including _during_ the rendering process if the game is in a
+  level. Doom gets half way through rendering the scene, then loads a wad,
+  then goes to draw the rest and messes up because things have changed.
+  I need to buffer the console commands so that they will run in the ticker
+  rather than during the rendering process.
+
+* FraggleScript is coming along nicely. I have it at quite an impressive
+  level already. A list of what it already does:
+        - Parses code correctly, breaks up code into tokens
+        - All the main C operators: ==, &, |, *, /, +, -, %, etc.
+        - Orders of precedence, eg 3+4*2 = 3+(4*2) not (3+4)*2
+        - Multi-level nested brackets
+        - Comments
+        - Variables: the structure is there but not fully implemented yet.
+  All the structure for creating a complete language is there. It can
+  already evaluate fairly complex expressions, such as
+        2*((2+3)*(3+9) + 1)
+  which it correctly evaluates as 122.
+
+* multi-line scripting. Under the old scripting, you could only have one
+  line for scripts. The new system requires you to place 'startscript'...
+  'endscript' markers around your script, but allows you to have as many
+  lines as you want and as big a script as you want. t_script.c added for
+  some script functions (clear scripts, console dump and run commands)
+  which will also be useful in the eventual transition to FraggleScript.
+
+* Removed the predefined lumps, placed them in a seperate file. The lumps
+  were really getting too big, especially with the prospect of 640x400
+  title screens. I have #ifdefed out all the code, to re-enable add
+  #define USEPREDEFINES somewhere or use compiler switches.
+
+* Improved frag scores counter. Now shows your colour, right aligns names,
+  highlights your name in white.
+
+* Better network random seeds: a seed is created by the key player and sent
+  to all the other players rather than using a fixed number.
+
+* Fixed chasecam bug, where the chasecam would be miles outside the level.
+  It was because of the displayplayer variable being reset without informing
+  the chasecam code. The chasecam has also been improved slightly: if you
+  walk backwards into a wall, the chasecam gradually ducks down, so you
+  can see the player. Also, when the chasecam is turned off, it moves inside
+  the player's head, rather than instantly turning off. prjboom inspired.
+  (at least that port was useful for something)  
+
+* c_docmd.c renamed c_runcmd.c because it sounds better =)
+
+==============================================================================
+7-6-1999
+
+A bit of stuff done in the past couple of weeks, but I haven't been doing
+much. The exams are coming up, so this means that I'm either gonna revise
+heavily during all my spare time or fuck around playing doom and stuff.
+I _really do_ want to get some good revision done and I hope I can
+concentrate enough to do it.
+
+Anyway.
+
+* New player colours. Old system of player colour map generation made more
+  generalised: the code is in r_draw.c (as before) but uses a table-based
+  approach now instead of seperate code for each colour. TRANSLATIONCOLOURS
+  #define added to r_draw.h, c_handle.c changed appropriately (c_colour).
+
+  Changes also made to st_stuff.c for the player statusbar background. It
+  now uses colourmaps for a single patch instead of a different patch
+  for each colour.
+
+* Heads up finished. 'message' char * pointer removed from player_t as I
+  think that this is a rather tacky way to do messages. Use dprintf from
+  now on.
+
+* Updated my page, including details of what will be in the next version
+  of SMMU and what the doom community can expect to see in it in the future.
+  I've done a lot over the past few months, but when I list it, it doesn't
+  actually look that much greater than the previous version =(. Anyway,
+  I should release a beta soon.
+
+  I also appealed for help from graphics artists to help me with SMMU.
+  I've been badgering mystican to do me some graphics for a few weeks, but
+  to no avail. Hopefully some kind souls will respond to my pleas =). I
+  appealed for some kick-ass level makers to make me a start map and a
+  demo wad.
+
+* Downloaded the TCP/IP Library, libsocket, which is designed (i think)
+  to use the same format (codewise) for network calls as linux / unix.
+  Myst said that I should do a linux version of SMMU which I am inclined
+  to agree would kick ass. My own disastrous experiences with linux, however,
+  have led me to believe that I am not currently anywhere near experienced
+  enough to undertake a port to linux. Perhaps if SMMU becomes popular
+  enough (I can dream, ok..) then someone will do a linux port for me.
+
+  Anyway, I managed to muddle/code a kind of web-server type thing which
+  sent responses back to netscape just fine. I need to write some basic
+  send/receive programs to properly familiarise myself with the library.
+  One thing I'm considering is writing a mock 'start game/join game'
+  program where you could start a server and have other nodes join it,
+  and it would go all the way up to the point where the game would start
+  before exiting. If I can do that and tackle any problems it may give me
+  then it should make doing the real thing in SMMU a bit easier.
+
+* Fixed the rendering bug which meant that entire middle textures were drawn
+  even when they should not be (a clipping bug: texture overlapped the floor)
+  All it needed was a couple of lines of code to r_segs.c to fix. You could
+  always fix this in original doom by setting the adjacent sectors to
+  slightly different lightlevels, but this was a bug which always pissed
+  me off =). My only real concern is that this may affect compatibility.
+
+* Added ver_date console command (date of compile). Also added a 'version
+  name' (ver_name at console). This version is called 'chadwick' after
+  19th Century Poor Law Guardian Edwin Chadwick.
+
+* I'm becoming steadily dis-satisfied with various bits of the console but
+  I don't think that it needs a complete re-write like the heads-up did.
+  The basic I/O definitely needs a major re-work. The current function
+  'C_WriteText' always adds a new line at a time. What I am aiming for is
+  more toward a 'C_Printf' style thing where '\n's could be put into the
+  text to start a new line. This would undoubtedly be more elegant, and
+  also would allow text to overflow from lines onto the next line.
+
+  The other main annoyance is the command 'list'. I would much prefer to
+  replace this with a dynamic system of individual program module groups
+  (eg heads up, status bar, game etc) submitting their own commands instead
+  of all the commands being in a static list. This would entrust the commands
+  to their appropriate modules. I have already divided the commands in
+  c_cmdlst.c into categories which may make help the process. This may cause
+  shake-ups, however, most significantly in tab-completion and network
+  commands. A change of this kind would also allow for hash-lookup tables
+  which would speed up searching for commands (perhaps important if the menu
+  and game controls soon become console-based)
+
+** MY REAL AIMS FOR THE FUTURE OF SMMU **
+
+I thought this might be prudent to show just where I'm going with this port.
+The main features I plan to add:
+
+* Client-server games. I have some clear ideas how to do this in my head,
+  though I wouldn't like to try to explain it here. Essential for any
+  decent network games.
+
+* TCP/IP support. The obvious one. I already have the library. I want this
+  to be possible once the game has begun. The current system of command
+  lines and seperate network programs I find tedious and dated. We should
+  not need any more to quit the game just to have start the game again.
+
+  What I am aiming for is not a dynamic system of game joining like in
+  Quake, as I think that this would be much too difficult. I'll leave that
+  to dmDoom =). What I aim for is a Descent-style system: you start a server,
+  then wait for other players to join, seeing them on a list as they join.
+  You can then start the game once you have a few players.
+
+  On the other hand, I do not intend to remove the old system as I think
+  the old system is still fine as it is.
+
+* FraggleScript. The current scripting system of using console commands is
+  frankly not enough for any decent scripting. I have, as mentioned, already
+  started on a parser for a C-style language I have named 'FraggleScript'.
+  It is still, however, in its very basic stages.
+
+* New menu system. The menu system is old and not designed to do what I want
+  to do with it. TeamTNT have attempted to build on the existing structure
+  but I would far rather knock it down and start again. Basically, the main
+  problem with the menu is that the options in it are way behind the rest of
+  the program.
+
+* Fix the things I have/ have probably broken:
+        - Savegames (might not be too bad)
+        - Demos (totally fucked)
+
+==============================================================================
+23-5-1999
+
+Ok, I haven't updated this thing in far too long (2 months!), however I have
+managed to do a considerable amount in this period of time..
+
+* Console command running heavily improved, basically almost rewritten.
+  The handlers are now of the form void func(void) rather than
+  void func(char *). Instead of being passed a plain string of text which
+  the user gave on the command line, the command line is now broken down
+  into 'tokens' (or individual words). There are new variables for this
+  in c_docmd.c: c_argv, c_argc, c_args: the tokens, number of them, and
+  the plain string respectively.
+
+* I have started rewriting the heads-up code. So far there is only the basic
+  text: 'picked up a clip' etc. I moved all the code for loading the font
+  and displaying lines of text into v_video.c: V_LoadFont, V_WriteText etc.
+  It supports coloured text by characters above 128 in the string, each
+  character corresponds to a different colour. #defines in v_video.h to
+  make colouring text strings easier. I hope to finish the heads up code
+  in the next few weeks, then I'll release this version. The headsup is the
+  only major thing left to do.
+
+* D_NewWadLumps added in d_main.c which is called whenever a new wad is
+  loaded. It checks through all the new lumps and keeps a look out for
+  interesting ones: 'dehacked' is one. Also, all sound lumps (beginning 'ds')
+  which it then tells s_sound.c to flush from memory. Now when you load a
+  wad, the correct sounds are played.
+
+* I have fully implemented doom legacy skins. New console commands:
+  'listskins' and 'skin': i'm sure you can figure them out. All the main
+  skins code is in p_skin.c. Code in d_newwadlumps calls the skins code
+  whenever it finds a 's_skin' resource in a new wad. This skin is parsed
+  and added to the list of skins.
+  - skin_t *skin added into d_player.h which points to the players
+    skin (or the 'marine' variable in p_skin.c)
+  - P_InitSkins is called in R_InitData which creates a list of sprite
+    resource names. This includes all the skin sprites
+    and the normal sprites. This new sprite list is used instead of sprnames
+    (info.c) by R_InitSpriteDefs. Hence, all the sprite data needed for the
+    skins is loaded. It is then a simple matter of changing which sprite is
+    displayed
+  - Sound is accomplished by some changes to s_sound.c. S_startsfxinfo
+    checks if the sound source is a player and modifies the sound played
+    according to skin.
+  - The code in st_stuff.c used to load the status bar face was split into
+    a seperate function which can then be used to load replacement faces.
+    The face displayed by st_stuff.c is modified according to
+    players[displayplayer].skin->faces
+
+* Finale text implemented. level 'info' lump can be used to give text to
+  be displayed in intermission. Code in f_finale.c modified to detect if
+  the background is a 4096-byte long flat or a standard-graphic background.
+  May look a bit silly if the background is <320x200 =)
+
+* Netgames actually work. I got a new pc (x-homepc) which can actually run
+  doom so I've been able to test it out over my lan. The first thing I
+  found was that SMMU was using G_DeferedInitNew in the 'map' function
+  which was causing it to cack up. I fixed that. Also the cmdsrc variable
+  was not being set properly, so if you typed 'kill' at the console on
+  any pc, it always killed player 1. fixed that. It works now more or less
+  fine. I have added a whole host of new netgame console commands:
+        - sv_bfgtype : currently bfg9000, classic or bouncing(may replace
+                        with a 'fair bfg' as doesnt work quite right)
+        - sv_bfglook : added 'sv_'
+        - sv_autoaim : autoaiming toggle on/off (not per-player)
+        - sv_allowmlook : added 'sv_'
+        - sv_recoil : recoil on/off
+        - fast/respawn : fast monsters/respawning
+        - nomonsters : toggle on/off
+        - nuke : works in netgames now (server only)
+
+* Serial comms also fixed. I hooked up the two pcs with a null-modem cable
+  But found that using d_arbitratenetgame was causing it to mess up so I
+  disabled it. Next problem was random sync so I fixed this by making
+  ResetNet() also reset the random seed to a constant number (1337 =)
+  The problem remains of making sure all the computers have the same
+  game variables (compatibility variable is the biggest one because of its
+  'fragmented' nature). A lot of variables have become console commands so
+  the problem has gone some way toward being fixed. This is something else
+  I need to fix before I release. But I have been able to get the PCs
+  running reliably by copying the same .cfg file to both PCs so they have
+  the same variables.
+
+* 'Swirly' quake-style water effect. I developed this as a seperate program
+  and then integrated it into SMMU. It's all mostly in r_ripple.c.
+  How it works is:
+  __________       1. Consider a texture consisting of horizontal lines.   
+                      (left). This is distorted by a sine wave which 'pushes'
+  __________          lines of the texture up/down depending on x.
+
+  /\  /\  /\       2. See the diagram? right. This is the texture after step
+    \/  \/            1. The same thing is now done in the y direction as
+  /\  /\  /\          well. If it was a 'grid' texture then you would see
+    \/  \/            the sine wave on the horizontal and vertical lines.
+                      But, well, there are limits to ascii art =).
+
+  3. The sine wave 'moves along' the texture with time. ie. y += sin(x)
+     becomes y += sin(x + kt)
+
+  To see this much better, enable the function in r_ripple.c which draws
+  lines on the flats. Then you will see.
+
+* A half-life style crosshair which lights up green when you point it at
+  enemies. 2 styles of crosshair are currently available (cross, angle).
+  I'm thinking perhaps of adding 'user crosshairs' which would allow users
+  to create their own crosshairs.. with their own names etc. For now, this
+  will suffice.
+
+* Quake-style intermissions camera. MT_CAMERA added to info.c. All cameras
+  are caught in p_mobj.c : P_SpawnMapThing. These are then passed into
+  wi_addcamera which creates a list of cameras. When the player exits the
+  level, he sees a view through the camera in the background. Note that it
+  is neccesary to set the view to fullscreen or you get hom in small screen
+  sizes. The immediate changing of screensizes is removed during
+  intermissions: see hu_stuff.c.  p_setup.c now resets the screen size
+  when entering a new level.
+
+* Chasecam - 3rd person view. It's all in p_chase.c. Note that a camera_t*
+  option has been added to r_renderplayerview to allow external cameras
+  such as the chasecam. The camera_t contains all the data needed about the
+  view: x, y, z, angle. Might consider adding updownangle for y-shearing.
+  This is also used for the intermissions camera. Console command added
+  to enable/disable console. Also the P_ResetChaseCam function which resets
+  the chasecam to the players position whenever the player teleports,
+  respawns etc. I thought i had fixed this problem but the other day I found
+  the chasecam outside the level where it had been in the previous level.
+  Need to find bug and fix.
+
+* VPO warning indicator in hu_stuff.c to warn the wad developer making wads
+  for old doom when he is over-indulging in visplanes. The number of planes
+  in original doom and in boom-derived ports differs, so I've had to
+  approximate 128 original vps (the limit) to around 80 on the new scale.
+
+* SMMU goes into graphics mode a bit earlier and does some of its loading
+  in the console. Now you can admire the pretty pictures =). I have added
+  to v_video.c a set of 'progress meter' functions which display a bar
+  showing how much of the current activity has been completed. This is
+  currently used only in r_init but could be used elsewhere in the game.
+
+* New console commands:
+   - animshot : animated screen shots. Usage: animshot n to take n pictures
+   - r_swirl : Replace flat animating with swirly water effect. This is kind
+             of a hack. However, I have also added support to choose to use
+             the swirly effect through the 'animated' resource by setting
+             delays between frames >65535
+   - r_precache : precache levels or not. Doesn't crash the game or anything.
+        Loads the levels faster but causes slowdowns when you enter new rooms.
+   - r_planeview : show visplanes
+   - r_stretchsky : 'r_' added
+   - wipe_speed : speed of screen wipes, default 12
+   - r_showgun : turn gun on/off
+   - r_showhom/r_homflash : hom detector on/off and flashing/red
+   - chasecam : duh.
+   - lefthanded : rather cool option which flips the playersprites, making
+        the player seem 'left-handed'. See r_things.c for more.
+   - v_* : changed from vid_* because video things in doom are v_ not vid_
+   - c_* : from con_*, ditto
+   - bobbing, screensize, pause - can set from console now
+   - s_precache - option not to precache sounds for speed
+   - s_pitched - crappy v1.1 pitched sounds effect
+
+* I had a go at translucent water but a number of difficulties meant that
+  I eventually gave up. I need to get a clearer grasp of exactly how doom
+  renders walls before I try again I think. There is still some commented
+  out code scattered throughout the rendering modules. If I can get this
+  to work, however, it would be damned cool, especially with the swirl
+  effect too.
+
+==============================================================================
+19-3-1999
+
+Preparing for release tommorrow hopefully, have done a number of things
+over the past month:
+
+* name now fixed on SMMU (Smack My Marine Up) - all name changes made
+* Better net support
+        - c_net.c added (console net commands)
+        - hu_queuechatchar and hu_dequeuechatchar moved to c_net.c and
+                renamed c_*
+        - when in netgame, and in console gamestate, the whole ticcmd is
+          used for transferring console commands, not just 'chatchar'
+        - easier to set network variables: new command flag cf_netvar
+          means that commands with this flag are effectively 'run' on all
+          consoles across the network. No longer any need for 2 commands
+          to implement network variables. See c_docmd.h
+        - c_sendnetdata (sends all network variables the other pcs need
+          to know) for at start of game
+        - c_updatevar: sends the value of a particular variable to sync
+          other pcs
+* serial comms! I have modified the sersetup source and linked it into
+  the smmu source, messages such as 'waiting for ring' etc are shown
+  in the console. It is a bit hacked at the moment, the serial code is
+  still using its own loops to check for rings etc and not the main doom
+  loop. added c_update to c_io.c which just displays the console and puts
+  it for screen without waiting for the doomloop, so the messages get
+  displayed. serial comms currently untested.
+* i sent off for and got the legacy source code, but it did not contain
+  the tcp/ip code. When I eventually get it, I will integrate it in the
+  same way as sersetup.
+* new command flag, cf_level, all commands with it will only be run
+  if gamestate==gs_level
+* hu_frags.c added, sorts frags, displays heads up 'frags' rankings list
+  I also plan to add a 'frads' list for the intermission =)
+* key_mlook, key_lookup, key_lookdown added and implemented properly(menus)
+  alwaysmlook is not in menus but can be set from console.
+  key binding menus have been slightly rearranged as a result
+* lumps.c seperated into lumps.c, dogs.c: dogs can now possibly be dumped
+        (prefer cats)
+* new internal lumps: - LAVAMAP: 'underwater' map for lava
+                      - METAL: much needed flat
+* chaingun sergeant shooting noise changed
+* p_info.c restructured slightly: now uses char*s to hold string values
+  instead of char[]s. console variable system altered in a similar way
+* Intermission screens: 
+        - greater par time support, logic from wi_stuff.c moved to g_game.c
+          if partime==-1, the par time is not displayed.
+        - interpic, level title can now be changed thru the p_info.c level
+          header lump. I also plan to add a quake-style 'view of the level'
+          later.
+* changed back the automap colours (almost, not quite exactly original ones)
+* fixed map30 bug, discovered it was the barrel frag code. commented out,
+  to fix later
+* fixed a _very_ annoying bug in p_map.c that had caused the game to crash:
+  see there for more.
+* start map almost finished, now has translucency, deep water effects etc.  
+* dynamic wad loading, tho still experimental. Currently has to reload the
+  entire wad directory and re-run r_init. addfile command added to console.
+  The bars in the start map are still there =)
+
+==============================================================================
+22-2-1999
+
+I spent half-term week working on sfdoom and have made quite a lot of
+changes:
+
+* predefined lumps moved to a new lumps.c from info.c
+* console more-or-less finished, still need:
+        - support for quote " marks for strings containing ';'s
+        - long lines of text are not split over 2 lines as they should be
+* levels can now be named anything: not just "mapxy" or "exmy". Can
+        be warped to using console command: 'map'.
+        changed some functions in g_game.c: g_initnew, g_deferedinitnew
+        are now passed a char* pointing to the level name, not the
+        episode, map. g_initnewnum and g_deferedinitnewnum added to do
+        the job the old ones did.
+        g_getmapforname and g_getnameformap added: allow you to find the
+        episode, map a particular map name suggests and vice versa
+* new p_info.c: which parses lumps put into the level name wad resources.
+        These lumps are in the format of a simple ascii text file, hold
+        data such as level console commands, level name etc. with section
+        headings in square [] brackets
+* greater net support: console commands can be sent across the network by
+        utilising the 'chatchar' byte in every tic that used to be used
+        for sending chat messages. Chat messages are now sent as console
+        commands to other computers which execute them and display the
+        message on screen. Some 'server' variables are more difficult to
+        implement as they effectively need 2 console commands: one typed
+        by the user and another internal one sent to the other pcs.
+        These begin with '_'s. C_SendCmd function in c_docmd.c
+        working net commands so far:
+        - name (_pn, playername) colour(_pc, player colour) kill
+                                                        (_pk, suicide)
+        - map (_ma, change level) _cm (chat message
+* level names: olo support now added. the level names from deca2 load
+        fine. Any new levels otherwise appear on the automap as 'new level'.
+        Checking for new levels is done by finding if the level comes from
+        the iwad, not from simply checking the modifiedgame variable. New
+        variable in w_wad.c to facilitate this: iwad_handle, the file handle
+        of the main iwad. new variable in p_setup.c also: newlevel is 1 if
+        the currently-being-played level is new or an original iwad level.
+        Level names can of course be changed from the new level info lump.
+* possibilities of sersetup/ipxsetup integration are looking better. I
+        added a new function to d_net.c called 'ResetNet' which resets the
+        internal gametic and realtic counters. I'm guessing that this
+        would probably be needed to maintain sync if we're talking about
+        connecting after doom has started. resetnet seems to work so far,
+        i tried it out in g_checkdemostatus so that it is called whenever
+        you finish a timedemo. Seems to work, no more bombing to dos
+        complaining about invalid tics.
+* rather unstable, perhaps because of the recently added 'levels-
+        named-anything' support. It has a habit of crashing periodically
+        (bombs to dos, sigsegv). If (in dos mode, not win95) i go to
+        map30, noclip and kill romero, then walk backward and get killed
+        by the explosions and die, it bombs to dos with 2-3 sigs.
+
+==============================================================================
+13-2-1999
+
+I don't plan to update this daily.
+
+Ok, I've been working on (the new version of) sfdoom for a couple of weeks
+now, after getting the initial mbf source code off the net. Lee Killough
+is surely the doom programming god :). This is hopefully gonna be kind of
+like legacy, multiplayer orientated, except I'll release the sources, and
+it will support boom/mbf editing options.
+
+Heres what I've done so far:
+
+* Deathmatch III! '-trideath' cmd-line parameter
+        - Weapons don't respawn, other items do. Great for fast DM.
+        - Barrels respawn, barrel frags work (shooting barrels to cause
+                chain reactions to kill other players earns you frags)
+                'barrels of fun' map23 should be fun now :)
+        - Players drop backpacks containing their readyweapon and ammo
+* various little bugs/ additions that annoyed me:
+        - added __djgpp_nearptr_enable(); to i_net.c to make multiplayer
+                work
+        - chaingun sergeants shooting with the shotgun sound
+        - fast doors bouncing off your head with the slow sound
+        - translucent gun flashes
+        - translucency set to 50% not 66% (?)
+        - you can now specify things to face any angle, it is not rounded
+                to the nearest 45 degrees (untested)
+* console (only at i/o stage so far, no commands)
+* looking up/down, shooting up/down (will add 'allowmlook' server console
+        option)
+
+A glance at what is to come:
+
+* Port sersetup/ipxsetup to djgpp and integrate into exe.
+* A working console
+* Console commands executed from linedefs as in the original sfdoom.
+* olo support.  par time, level name, finale text in 'map01' or 'e1m1'
+        level marker
+* Quake-style 'start map'
+* A new hud?
+
+I don't plan to put coloured lighting in again. The main rendering routines
+are in assembly, which I can't do. Also, the original sfdoom coloured
+lighting was terribly bug-ridden and when it worked, the sprites looked
+crap.
+
+--
+Simon Howard 'Fraggle'
+http://fraggle.tsx.org/
+sfraggle@sfrag.free-online.co.uk
+--

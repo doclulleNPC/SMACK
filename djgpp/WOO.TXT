@@ -1,0 +1,6 @@
+i_main.c:void I_Quit(void);
+i_main.c:     The old code called I_Quit() to end program,
+i_main.c:     while now I_Quit() is installed as an exit
+i_main.c:  atexit(I_Quit);
+i_system.c:// I_Quit
+i_system.c:void I_Quit (void)

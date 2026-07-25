@@ -1,0 +1,4 @@
+d_main.c:// If $DOOMWADDIR is an existing file
+d_main.c:// If $DOOMWADDIR is existing dir, try customiwad if set, else standard iwads
+d_main.c:  static const char *envvars[] = {"DOOMWADDIR", "HOME"};
+d_main.c://   c) $DOOMWADDIR

@@ -1,0 +1,28 @@
+# Build output
+obj/
+objdebug/
+*.o
+*.d
+*.exe
+
+# Runtime binaries / symlinks produced by the `run` target
+run/smmu
+run/smmu_release
+run/smmu.wad
+
+# Copyrighted id Software IWADs — never commit (user supplies these)
+run/DOOM.WAD
+run/DOOM2.WAD
+run/doom1.wad
+/DOOM.WAD
+/DOOM2.WAD
+/doom1.wad
+
+# Runtime WAD copies (the originals live in the repo root)
+run/hubtest.wad
+run/smmutest.wad
+
+# Generated at runtime
+*.cfg
+tranmap.dat
+run/tranmap.dat

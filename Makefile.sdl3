@@ -1,0 +1,169 @@
+############################################################################
+# SMMU SDL3 Linux Makefile
+# Modernized from SMMU 3.21 (1999) - Linux SDL3 backend
+
+MODE    = RELEASE
+O       = $(O_$(MODE))
+O_RELEASE = obj
+O_DEBUG   = objdebug
+
+# compiler
+CC      = gcc
+RM      = rm -f
+
+# SDL3
+SDL_CFLAGS := $(shell pkg-config --cflags sdl3)
+SDL_LIBS   := $(shell pkg-config --libs   sdl3)
+
+# options
+# -fno-strict-aliasing is MANDATORY: the engine type-puns constantly (comparing
+# 4-char lump names as ints, etc.) and -O2 miscompiles that under default strict
+# aliasing. -fcommon is required too: the 1999 source has tentative-definition
+# globals (e.g. demo_insurance, weapon_recoil) defined in several .c files, which
+# modern gcc's default -fno-common rejects as multiple-definition link errors on
+# a from-scratch build. See docs/LEGACY_FIXES.md §2.
+CFLAGS_COMMON   = -Wall -g -I. $(SDL_CFLAGS) -DSDL3 -DDOGS -fno-strict-aliasing -fcommon -Wno-int-conversion -Wno-incompatible-pointer-types -Wno-discarded-qualifiers
+CFLAGS_DEBUG    = -O0 -g -DRANGECHECK -DINSTRUMENTED
+CFLAGS_RELEASE  = -O2
+
+# auto-generate header dependencies (.d files) so editing a .h recompiles the
+# .c files that include it -- no more silent stale objects / `make clean`.
+DEPFLAGS        = -MMD -MP
+
+# libraries
+LIBS_COMMON     = $(SDL_LIBS) -lm
+LDFLAGS_COMMON  =
+
+CFLAGS    = $(CFLAGS_COMMON) $(CFLAGS_$(MODE))
+LDFLAGS   = $(LDFLAGS_COMMON)
+
+# system-specific object files
+PLATOBJS = \
+	$(O)/i_main.o      \
+	$(O)/i_system.o    \
+	$(O)/i_video.o     \
+	$(O)/i_sound.o     \
+	$(O)/i_net.o
+
+# object files
+OBJS = \
+	$(PLATOBJS)        \
+	$(O)/p_info.o      \
+	$(O)/c_cmd.o       \
+	$(O)/c_io.o        \
+	$(O)/c_runcmd.o    \
+	$(O)/c_net.o       \
+	$(O)/doomdef.o     \
+	$(O)/doomstat.o    \
+	$(O)/dstrings.o    \
+	$(O)/tables.o      \
+	$(O)/f_finale.o    \
+	$(O)/f_wipe.o      \
+	$(O)/d_main.o      \
+	$(O)/d_net.o       \
+	$(O)/d_items.o     \
+	$(O)/g_game.o      \
+	$(O)/g_cmd.o       \
+	$(O)/mn_menus.o    \
+	$(O)/mn_misc.o     \
+	$(O)/mn_engin.o    \
+	$(O)/m_misc.o      \
+	$(O)/m_argv.o      \
+	$(O)/m_bbox.o      \
+	$(O)/m_cheat.o     \
+	$(O)/m_random.o    \
+	$(O)/am_map.o      \
+	$(O)/am_color.o    \
+	$(O)/p_ceilng.o    \
+	$(O)/p_chase.o     \
+	$(O)/p_cmd.o       \
+	$(O)/p_doors.o     \
+	$(O)/p_enemy.o     \
+	$(O)/p_floor.o     \
+	$(O)/p_hubs.o      \
+	$(O)/p_inter.o     \
+	$(O)/p_lights.o    \
+	$(O)/p_map.o       \
+	$(O)/p_maputl.o    \
+	$(O)/p_plats.o     \
+	$(O)/p_pspr.o      \
+	$(O)/p_setup.o     \
+	$(O)/p_sight.o     \
+	$(O)/p_skin.o      \
+	$(O)/p_spec.o      \
+	$(O)/p_switch.o    \
+	$(O)/p_mobj.o      \
+	$(O)/p_telept.o    \
+	$(O)/p_tick.o      \
+	$(O)/p_saveg.o     \
+	$(O)/p_user.o      \
+	$(O)/r_bsp.o       \
+	$(O)/r_data.o      \
+	$(O)/r_draw.o      \
+	$(O)/r_main.o      \
+	$(O)/r_plane.o     \
+	$(O)/r_segs.o      \
+	$(O)/r_ripple.o    \
+	$(O)/r_sky.o       \
+	$(O)/r_things.o    \
+	$(O)/w_wad.o       \
+	$(O)/wi_stuff.o    \
+	$(O)/v_video.o     \
+	$(O)/v_misc.o      \
+	$(O)/st_lib.o      \
+	$(O)/st_stuff.o    \
+	$(O)/hu_stuff.o    \
+	$(O)/hu_over.o     \
+	$(O)/hu_frags.o    \
+	$(O)/s_sound.o     \
+	$(O)/z_zone.o      \
+	$(O)/info.o        \
+	$(O)/sounds.o      \
+	$(O)/p_genlin.o    \
+	$(O)/d_deh.o       \
+	$(O)/t_script.o    \
+	$(O)/t_parse.o     \
+	$(O)/t_prepro.o    \
+	$(O)/t_vari.o      \
+	$(O)/t_func.o      \
+	$(O)/t_oper.o      \
+	$(O)/t_spec.o      \
+	$(O)/version.o     \
+	$(O)/dogs.o
+
+EXE = $(O)/smmu
+
+# runtime image: the binary and everything needed to launch SMMU live here
+RUNDIR = run
+
+all: $(EXE) run
+
+$(EXE): $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS) $(LIBS_COMMON)
+
+# copy the freshly built binary and its data into the run/ directory so
+# `cd run && ./smmu -iwad ...` always uses the latest build
+run: $(EXE)
+	mkdir -p $(RUNDIR)
+	cp -f $(EXE) $(RUNDIR)/smmu
+	ln -sf ../smmu.wad $(RUNDIR)/smmu.wad
+
+$(O)/%.o: %.c | $(O)
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
+
+$(O)/%.o: linux/%.c | $(O)
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
+
+$(O):
+	mkdir -p $(O)
+
+debug:
+	$(MAKE) -f Makefile.sdl3 MODE=DEBUG
+
+clean:
+	$(RM) -r $(O_RELEASE) $(O_DEBUG)
+
+.PHONY: all run debug clean
+
+# pull in the auto-generated per-object header dependencies
+-include $(OBJS:.o=.d)
