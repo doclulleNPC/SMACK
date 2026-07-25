@@ -214,6 +214,12 @@ void I_Init(void)
   else
     I_GetTime = I_GetTime_RealTime;
 
+  // I_Quit saves the config (M_SaveDefaults) and finalizes demos on exit.
+  // It must be the atexit handler so the `quit` command's exit(0), and any
+  // exit(1) from I_Error, both save settings. (Was atexit(I_Shutdown), an empty
+  // stub, so settings were never written -- despite the comment above claiming
+  // exit() "triggers atexit(I_Quit)".) Crashes still _exit() past atexit.
+  atexit(I_Quit);
   atexit(I_Shutdown);
 
   // avoid sound init if both flags are set

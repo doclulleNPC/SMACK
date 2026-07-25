@@ -215,14 +215,14 @@ void I_GetEvent(void)
     switch (ev.type)
     {
       case SDL_EVENT_QUIT:
-      {
-        event_t e;
-        e.type = ev_keydown;
-        e.data1 = key_escape;
-        e.data2 = e.data3 = 0;
-        D_PostEvent(&e);
+      case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+        // Window close button / WM quit -> clean exit. exit(0) runs the
+        // atexit handlers (I_Quit -> M_SaveDefaults), so settings are saved.
+        // (Previously this only posted ESC, which opened the menu and never
+        // quit or saved.) SDL3 sends CLOSE_REQUESTED for the window's X button
+        // and QUIT when the last window closes -- handle both.
+        exit(0);
         break;
-      }
 
       case SDL_EVENT_KEY_DOWN:
         post_key_event(ev.key.key, true);
