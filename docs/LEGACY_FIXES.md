@@ -62,15 +62,21 @@ backend is reimplemented on SDL3.
 - **Video** (`i_video.c`): the 8-bit palettised DOOM framebuffer is converted to an
   RGBA8888 streaming texture and stretched to the window with nearest-neighbour
   sampling. `SMMU_SCALE=N` magnifies the window.
-- **Sound** (`i_sound.c`): originally silent stubs. Now a real software mixer —
-  parses DOOM's 8-bit DMX sound lumps, resamples to 44.1 kHz, applies pitch and the
-  classic x² stereo pan law, mixes up to 128 voices into an SDL3 audio stream via a
-  pull callback, guarded with `SDL_LockAudioStream`. **Music is still silent**
-  (the `I_*Song`/`I_*Music` entry points remain stubs).
+- **SFX** (`i_sound.c`): originally silent stubs. Now a real software mixer — parses
+  DOOM's 8-bit DMX sound lumps, resamples to 44.1 kHz, applies pitch and the classic
+  x² stereo pan law, mixes up to 128 voices into an SDL3 audio stream via a pull
+  callback, guarded with `SDL_LockAudioStream`.
+- **Music** — full **OPL3 (Adlib/SoundBlaster) synthesis**, the authentic DOOM sound
+  with no external soundfont. Ported Nuked-OPL3 (`opl3.c`), a passive GENMIDI→OPL
+  voice player (`i_opl.c`), and a MUS+MIDI sequencer (`i_mus.c`). `I_InitMusic` loads
+  the IWAD's `GENMIDI` patches and inits the synth at 44.1 kHz; `I_RegisterSong`/
+  `PlaySong`/`StopSong` drive it; the SDL3 callback renders the OPL stream and mixes
+  it over the SFX (scaled by `snd_MusicVolume`). See §10.
 
 | Symptom | Root cause | Fix | Files |
 |---|---|---|---|
 | **No sound at all** even after the mixer was written | `snd_card` stayed `0`, and `S_StartSfxInfo` early-returns on `!snd_card` — so `I_StartSound` was never even reached | set `snd_card = 1` on successful `I_InitSound` | `linux/i_sound.c` |
+| **No music at all** even after the synth was written | `I_InitMusic` was **never called** anywhere (and `mus_card` stayed 0, so the `S_*` music paths early-returned) | call `I_InitMusic` from `S_Init` (gated on `!nomusicparm`); it sets `mus_card` | `s_sound.c`, `linux/i_sound.c` |
 | **Whole image renders at ~¼ brightness** ("very dark compared to other ports") | `I_SetPalette` shifted gamma-corrected values `>> 2` — correct for the VGA 6-bit DAC (0–63), wrong for SDL's 8-bit RGB (0–255) | use the full 8-bit `gammatable` value directly | `linux/i_video.c` |
 | Mouse stayed captured in menus | relative-mouse mode was enabled whenever `usemouse`, never released | `I_UpdateGrab()` each tic: grab only during active gameplay; release (cursor back, motion suppressed) when `menuactive`/`consoleactive`/`paused` | `linux/i_video.c` |
 
@@ -200,6 +206,35 @@ exist in SMMU.
   through `(int)` rather than `intptr_t`. Works today (the indices are small,
   zero/sign-extended, and the save buffer is dynamic); the critical mobj refs already
   use `(size_t)`. Hardening-for-parity only, not a live bug.
+
+---
+
+## 10. OPL3 music synthesis
+
+The DOS backend played music through AWE32/EMU8K hardware MIDI (`djgpp/emu8kmid.c`)
+and a MUS→MIDI converter (`djgpp/mmus2mid.c`) — neither portable, neither built by
+`Makefile.sdl3`. Music was fully silent (stub `I_*Song`/`I_*Music`, `mus_card = 0`,
+and `I_InitMusic` never even called). This port adds authentic Adlib/OPL sound with
+**no external dependency or soundfont**, driving the same SDL3 audio stream as the
+SFX:
+
+- **`opl3.c` / `opl3.h`** — the Nuked-OPL3 cycle-accurate OPL2/OPL3 emulator.
+  `OPL3_Reset(rate)` + `OPL3_GenerateStream` render (and internally resample from the
+  chip's native 49716 Hz) to any target rate — here 44.1 kHz to match the SFX stream.
+- **`i_opl.c` / `i_opl.h`** — a *passive* GENMIDI→OPL voice player. Parses the IWAD's
+  `GENMIDI` lump (128 instruments + 47 percussion, `#OPL_II#` header) and exposes
+  `OPL_Music_NoteOn/Off/Program/ChannelVolume/PitchBend` + `OPL_Music_Render(out, n)`.
+- **`i_mus.c` / `i_mus.h`** — a sequencer for both native DOOM **MUS** lumps and raw
+  **MIDI** (`MThd`), timed at 140 Hz; `MUS_Render` fires events then pulls OPL audio
+  for the gap between them.
+
+Integration (`linux/i_sound.c`): `I_InitMusic` calls `MUS_Init` (loads `GENMIDI`,
+inits the synth) and sets `mus_card`; `I_RegisterSong` derives the exact lump length
+from the MUS/MIDI header (so it needs no `W_LumpLength` plumbing) and calls
+`MUS_Register`; the audio callback renders `MUS_Render` into a scratch buffer and
+mixes it over the SFX, scaled by `snd_MusicVolume`. All state changes are guarded
+with `SDL_LockAudioStream` (the sequencer runs on the audio thread). `MUSRATE` in
+`i_mus.c` was changed from aidoom's 11025 to **44100** to match `OUT_FREQ`.
 
 ---
 

@@ -664,6 +664,10 @@ void S_Init(int sfxVolume, int musicVolume)
       channels = calloc(numChannels = default_numChannels, sizeof(channel_t));
     }
 
+  // MOD: bring up the OPL music synth (sets mus_card if GENMIDI is present)
+  if (!nomusicparm)
+    I_InitMusic();
+
   S_SetMusicVolume(musicVolume);
 
   if(s_precache)        // sf: option to precache sounds

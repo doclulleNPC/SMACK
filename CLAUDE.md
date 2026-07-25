@@ -59,7 +59,7 @@ An IWAD (`DOOM.WAD`, `DOOM2.WAD`, `doom1.wad`) is required on first run. See
 - `SDL_VIDEODRIVER=dummy` / `SDL_AUDIODRIVER=dummy` — headless smoke tests; `-nodraw`/`-nosound`/`-nomusic` do the same at the game level.
 - User config and saves live in `~/.smmu/` (`smmu.cfg`, `savegames/`).
 
-SFX are implemented: `linux/i_sound.c` mixes Doom's 8-bit DMX sound lumps into a 16-bit stereo SDL3 audio stream via a pull callback (`snd_card` is set on init so the `S_*` layer plays). **Music is still silent** — the `I_*Song`/`I_*Music` entry points in that file are stubs.
+Sound is fully implemented. SFX: `linux/i_sound.c` mixes Doom's 8-bit DMX lumps into a 16-bit stereo SDL3 stream via a pull callback (`snd_card` set on init). Music: authentic **OPL3 synthesis** — Nuked-OPL3 (`opl3.c`) + a GENMIDI voice player (`i_opl.c`) + a MUS/MIDI sequencer (`i_mus.c`), rendered into the same audio callback and mixed over the SFX. `I_InitMusic` (called from `S_Init`) loads the IWAD `GENMIDI` and sets `mus_card`. See `docs/LEGACY_FIXES.md` §3/§10.
 
 ## Architecture
 

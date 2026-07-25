@@ -26,6 +26,7 @@
 #include "../g_game.h"
 #include "../d_main.h"
 #include "../z_zone.h"
+#include "../i_mus.h"     // OPL3 (Nuked) MUS/MIDI music backend
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
@@ -33,6 +34,12 @@
 #include <stdint.h>
 
 int snd_card = 0, mus_card = 0, detect_voices;
+
+// ---- music state ----------------------------------------------------------
+static int music_initialised = 0;   // GENMIDI loaded + OPL synth ready
+static int music_registered  = 0;   // a song is registered
+static int music_playing     = 0;   // MUS_Render should run in the callback
+static int music_paused      = 0;
 
 // ---- output format --------------------------------------------------------
 
@@ -307,6 +314,22 @@ static void SDLCALL audio_callback(void *userdata, SDL_AudioStream *stream,
       break;
 
     mix_frames(buf, want_frames);
+
+    // mix the OPL music on top of the SFX (scaled by snd_MusicVolume 0..15)
+    if (music_playing && !music_paused)
+    {
+      static Sint16 mbuf[2048 * OUT_CHANNELS];
+      int i, n = want_frames * OUT_CHANNELS, mv = snd_MusicVolume;
+      MUS_Render(mbuf, want_frames);
+      for (i = 0; i < n; i++)
+      {
+        int s = buf[i] + (mbuf[i] * mv) / 15;
+        if (s >  32767) s =  32767;
+        if (s < -32768) s = -32768;
+        buf[i] = (Sint16)s;
+      }
+    }
+
     SDL_PutAudioStreamData(stream, buf, want_frames * bytes_per_frame);
     additional_amount -= want_frames * bytes_per_frame;
   }
@@ -363,29 +386,106 @@ void I_ShutdownSound(void)
   snd_card = 0;
 }
 
-// ---- MUSIC API (still silent) ---------------------------------------------
+// ---- MUSIC API (OPL3 synth via i_mus.c / i_opl.c / opl3.c) -----------------
 
-void I_InitMusic(void)        { atexit(I_ShutdownMusic); }
-void I_ShutdownMusic(void)    { }
+// Exact length of a MUS or MIDI lump from its self-describing header, so we
+// don't need the WAD lump length passed down through I_RegisterSong.
+static int music_len(const unsigned char *d)
+{
+  if (!memcmp(d, "MUS\x1a", 4))
+    return (d[6] | (d[7] << 8)) + (d[4] | (d[5] << 8));   // scorestart+scorelen
+  if (!memcmp(d, "MThd", 4))
+  {
+    int hlen    = (d[4] << 24) | (d[5] << 16) | (d[6] << 8) | d[7];
+    int ntracks = (d[10] << 8) | d[11];
+    const unsigned char *p = d + 8 + hlen;
+    int t;
+    for (t = 0; t < ntracks; t++)
+    {
+      int tlen;
+      if (memcmp(p, "MTrk", 4)) break;
+      tlen = (p[4] << 24) | (p[5] << 16) | (p[6] << 8) | p[7];
+      p += 8 + tlen;
+    }
+    return (int)(p - d);
+  }
+  return 0;
+}
+
+void I_InitMusic(void)
+{
+  atexit(I_ShutdownMusic);
+  // MUS_Init loads the IWAD's GENMIDI patches and inits the OPL synth at the
+  // audio stream's rate. Needs the WADs loaded (they are, by S_Init time).
+  if (MUS_Init())
+  {
+    music_initialised = 1;
+    mus_card = 1;                 // tell the S_ layer music is available
+    printf("I_InitMusic: OPL3 (Nuked) synth, GENMIDI patches loaded\n");
+  }
+  else
+    fprintf(stderr, "I_InitMusic: no GENMIDI lump -- music disabled\n");
+}
+
+void I_ShutdownMusic(void)
+{
+  if (music_initialised)
+    I_StopSong(0);
+}
 
 void I_SetMusicVolume(int v)  { snd_MusicVolume = v; }
 
-void I_PauseSong(int h)       { (void)h; }
-void I_ResumeSong(int h)      { (void)h; }
-void I_PlaySong(int h, int l) { (void)h; (void)l; }
-void I_StopSong(int h)        { (void)h; }
-void I_UnRegisterSong(int h)  { (void)h; }
+void I_PauseSong(int h)       { (void)h; music_paused = 1; }
+void I_ResumeSong(int h)      { (void)h; music_paused = 0; }
+
+void I_PlaySong(int handle, int looping)
+{
+  (void)handle;
+  if (!music_initialised || !music_registered || !audio_stream)
+    return;
+  SDL_LockAudioStream(audio_stream);
+  MUS_Start(looping);
+  music_playing = 1;
+  music_paused  = 0;
+  SDL_UnlockAudioStream(audio_stream);
+}
+
+void I_StopSong(int handle)
+{
+  (void)handle;
+  if (!music_initialised || !audio_stream)
+    return;
+  SDL_LockAudioStream(audio_stream);
+  if (music_playing)
+    MUS_Stop();
+  music_playing = 0;
+  SDL_UnlockAudioStream(audio_stream);
+}
+
+void I_UnRegisterSong(int handle)
+{
+  I_StopSong(handle);
+  music_registered = 0;
+}
 
 int I_RegisterSong(void *data)
 {
-  (void)data;
-  return 1;
+  int len;
+  if (!music_initialised || !data || !audio_stream)
+    return 0;
+  len = music_len((const unsigned char *)data);
+  if (len <= 0)
+    return 0;                     // not MUS/MIDI -> "no music"
+  SDL_LockAudioStream(audio_stream);
+  music_registered = MUS_Register(data, len);
+  SDL_UnlockAudioStream(audio_stream);
+  return music_registered ? 1 : 0;
 }
 
 int I_QrySongPlaying(int h)
 {
   (void)h;
-  return 0;
+  return music_playing;
 }
 
 void I_Sound_AddCommands(void)
