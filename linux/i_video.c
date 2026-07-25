@@ -369,8 +369,11 @@ extern boolean setsizeneeded;
 static void I_CreateWindowAndRenderer(void)
 {
   // The render framebuffer is SCREENWIDTH<<hires x SCREENHEIGHT<<hires
-  // (640x400 in the default hi-res mode). SMMU_SCALE=N further magnifies
-  // the window; default 1 so hi-res gives a 640x400 window.
+  // (640x400 in the default hi-res mode) and is nearest-neighbour stretched to
+  // the window. Window size comes from (in order of precedence): -geom WxH, the
+  // -2/-3/-4 scale flags, the SMMU_SCALE env var, else 1x (a 640x400 window).
+  int p;
+
   hires_flag = hires;
   fb_w = SCREENWIDTH  << hires;
   fb_h = SCREENHEIGHT << hires;
@@ -380,8 +383,24 @@ static void I_CreateWindowAndRenderer(void)
   if (env_scale && atoi(env_scale) >= 1)
     scale = atoi(env_scale);
 
+  // command-line scale shortcuts override SMMU_SCALE
+  if      (M_CheckParm("-4")) scale = 4;
+  else if (M_CheckParm("-3")) scale = 3;
+  else if (M_CheckParm("-2")) scale = 2;
+
   win_w = fb_w * scale;
   win_h = fb_h * scale;
+
+  // explicit window geometry (e.g. -geom 1280x800) overrides the scaling
+  if ((p = M_CheckParm("-geom")) && p < myargc - 1)
+  {
+    int gw = 0, gh = 0;
+    if (sscanf(myargv[p + 1], "%dx%d", &gw, &gh) == 2 && gw > 0 && gh > 0)
+    {
+      win_w = gw;
+      win_h = gh;
+    }
+  }
 
   if (!window)
   {

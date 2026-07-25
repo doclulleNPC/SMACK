@@ -52,6 +52,11 @@ backend under `linux/` that did not build/run cleanly.
   backend is hires-aware. Lowres mode and its "video mode" menu toggle were removed.
 - **Mouse grab** — the pointer is released (cursor back) in menus/console/pause and
   only captured during active gameplay.
+- **Window sizing from the command line** — `-2` / `-3` / `-4` scale the window ×2/×3/×4
+  and `-geom WxH` sets an explicit size (SDL nearest-neighbour stretches the 640×400
+  framebuffer). These revive the old X11-backend flags on top of `SMMU_SCALE`. (The
+  other legacy flags — `-disp`, `-noaccel`, `-grabmouse` — were intentionally left out;
+  SDL/the auto-grab already cover them.)
 
 ## HUD (new / reworked)
 
