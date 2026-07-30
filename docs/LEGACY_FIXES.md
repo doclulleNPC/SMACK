@@ -197,11 +197,7 @@ exist in SMMU.
 
 **Deferred limitations (present, but out of scope for stock IWADs):**
 
-- **Tall single-patch textures (>254 rows, DeePsea encoding):** `R_DrawColumnInCache`
-  uses absolute (not cumulative) `topdelta`, and tall *single* patches aren't forced
-  through the composite path. Only bites modern limit-removing PWADs (e.g. Legacy of
-  Rust `ZZZGATE*`); stock DOOM/DOOM2/Plutonia/TNT are unaffected. SMMU *does* already
-  have the two adjacent §12 fixes (32-bit column offsets, `dc_texheight`).
+- ~~**Tall single-patch textures (>254 rows, DeePsea encoding)**~~ — **fixed**, see §13.
 - **Savegame index swizzle:** `p_saveg.c` reads `state/player/sector/line` refs back
   through `(int)` rather than `intptr_t`. Works today (the indices are small,
   zero/sign-extended, and the save buffer is dynamic); the critical mobj refs already
@@ -277,9 +273,26 @@ demo/netgame-safe):
 Deliberately NOT ported (features / out of scope for a deterministic 640×400 4:3
 port): brightmaps, sky-color drawer / SKYDEFS, non-power-of-2 textures, truecolor,
 uncapped-framerate interpolation, widescreen, the `R_MapPlane` precision rewrite
-(sub-pixel), drawseg-bucketing / `solidcol` rewrite (perf/architectural). The one
-remaining known render gap is **tall single-patch (DeePsea, >254-row) textures**
-(§9) — relevant only to modern limit-removing PWADs.
+(sub-pixel), drawseg-bucketing / `solidcol` rewrite (perf/architectural).
+
+---
+
+## 13. Tall (DeePsea, >254-row) textures
+
+The last known render gap (§9), now closed. The 1993 texture composer returns
+single-patch columns **raw** from the patch lump; a >254-row texture is stored as
+multiple posts (DeePsea: a post whose `topdelta` ≤ the previous one is a *cumulative*
+continuation), so reading it raw makes `R_DrawColumn` interpret post headers as pixels
+→ scrambled bands below ~row 254 (e.g. Legacy of Rust `ZZZGATE*`). Stock
+DOOM/DOOM2/Plutonia/TNT are ≤128 tall and were unaffected.
+
+Ported Woof's fix (`r_data.c`): a separate **flat opaque composite** buffer
+(`texturecomposite2`/`texturecolumnofs2`, `colofs2[x] = x*height`) is built for **every**
+texture and returned by `R_GetColumn` for 1s walls/flats; the posted composite (with a
+new **cumulative-topdelta reconstruction** past row 254) is returned by the new
+`R_GetColumnMasked` for 2s mid-textures. `R_DrawColumnInCache` tracks cumulative
+topdeltas. The relative logic is a no-op for ≤254-tall content, so stock textures render
+**identically** (verified on DOOM2 MAP01). Files: `r_data.c`, `r_data.h`, `r_segs.c`.
 
 ---
 
@@ -308,7 +321,8 @@ including the textured toggle, gamma, sound/music volume, …) are written to
   bound-checked cap, not dynamic (§8). A genuinely pathological view; raise
   `MAXOPENINGS` if a real map hits it.
 - **Everything renders too dark** → the palette 6-bit `>> 2` shift is back (§3).
-- **A modern PWAD's tall wall texture is garbage below ~row 254** → the deferred
-  DeePsea tall-single-patch limitation (§9).
+- **A modern PWAD's tall wall texture is garbage below ~row 254** → the DeePsea
+  tall-texture handling (§13); should already be fixed — check `R_GetColumn`/
+  `R_GenerateComposite` (the flat `texturecomposite2`).
 - **Stairs build to the wrong height / a second staircase off one switch is wrong**
   → that's the *vanilla* stair-builder bug, kept on purpose (§9). Not yours to fix.

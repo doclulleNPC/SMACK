@@ -27,7 +27,8 @@
 #include "r_state.h"
 
 // Retrieve column data for span blitting.
-byte *R_GetColumn(int tex, int col);
+byte *R_GetColumn(int tex, int col);        // flat opaque column (1s walls)
+byte *R_GetColumnMasked(int tex, int col);  // posted column (2s mid-textures)
 
 // I/O, setting up the stuff.
 void R_InitData (void);

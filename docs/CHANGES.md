@@ -35,6 +35,11 @@ backend under `linux/` that did not build/run cleanly.
   a pathological view could silently corrupt memory. Now `I_Error`s instead.
 - **WiggleHack II** — tall walls no longer shimmer/wiggle as you move (per-wall
   fixed-point precision + scale clamp, ported from Woof; `r_segs.c`/`r_main.c`).
+- **Tall (DeePsea, >254-row) textures** — modern limit-removing PWADs' tall
+  textures (e.g. Legacy of Rust `ZZZGATE*`) no longer render as scrambled bands;
+  a flat opaque composite is built for 1s walls and a cumulative-topdelta posted
+  composite for 2s mid-textures (`R_GetColumn`/`R_GetColumnMasked`, `r_data.c`).
+  Stock textures render identically.
 - **Renderer-correctness batch** (Woof parity) — overflow-safe BSP clip angle
   (`R_PointToAngleCrispy`, fixes seg flicker/HOM on huge maps), 64-bit sprite
   clipping (`sprtopscreen`) + tall-sprite posts, 64-bit sprite projection

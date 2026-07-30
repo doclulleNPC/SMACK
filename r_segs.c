@@ -203,9 +203,9 @@ void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2)
         // the Medusa effect. The fix is to construct true columns
         // when forming multipatched textures (see r_data.c).
 
-        // draw the texture
+        // draw the texture (masked 2s mid-texture -> posted column)
         col = (column_t *)((byte *)
-                           R_GetColumn(texnum,maskedtexturecol[dc_x]) - 3);
+                           R_GetColumnMasked(texnum,maskedtexturecol[dc_x]) - 3);
         R_DrawMaskedColumn (col);
         maskedtexturecol[dc_x] = MAXSHORT;
       }
