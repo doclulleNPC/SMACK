@@ -82,6 +82,13 @@ __inline__ static fixed_t FixedMul(fixed_t a, fixed_t b)
 
 #endif // DJGPP
 
+// 64-bit-result FixedMul: keeps the a*b>>FRACBITS result 64-bit so callers
+// (e.g. sprite projection) don't overflow 32-bit before their own shift.
+static inline long long FixedMul64(fixed_t a, fixed_t b)
+{
+  return ((long long) a * b) >> FRACBITS;
+}
+
 //
 // Fixed Point Division
 //

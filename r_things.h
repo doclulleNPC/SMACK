@@ -20,6 +20,7 @@
 //-----------------------------------------------------------------------------
 
 #ifndef __R_THINGS__
+#include <stdint.h>
 #define __R_THINGS__
 
 #include "r_defs.h"
@@ -34,7 +35,7 @@ extern short screenheightarray[MAX_SCREENWIDTH];   // change to MAX_*
 extern short   *mfloorclip;
 extern short   *mceilingclip;
 extern fixed_t spryscale;
-extern fixed_t sprtopscreen;
+extern int64_t sprtopscreen;   // WiggleFix: 64-bit (tall sprites / close range)
 extern fixed_t pspritescale;
 extern fixed_t pspriteiscale;
 

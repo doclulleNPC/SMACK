@@ -144,6 +144,10 @@ typedef struct
   int linecount;
   struct line_s **lines;
 
+  // WiggleHack II (r_segs.c): cached sector height + scale-precision index
+  int cachedheight;
+  int scaleindex;
+
 } sector_t;
 
 //

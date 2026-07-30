@@ -71,7 +71,7 @@ backend is reimplemented on SDL3.
   voice player (`i_opl.c`), and a MUS+MIDI sequencer (`i_mus.c`). `I_InitMusic` loads
   the IWAD's `GENMIDI` patches and inits the synth at 44.1 kHz; `I_RegisterSong`/
   `PlaySong`/`StopSong` drive it; the SDL3 callback renders the OPL stream and mixes
-  it over the SFX (scaled by `snd_MusicVolume`). See §10.
+  it over the SFX (scaled by `snd_MusicVolume`). See §11.
 
 | Symptom | Root cause | Fix | Files |
 |---|---|---|---|
@@ -209,7 +209,25 @@ exist in SMMU.
 
 ---
 
-## 10. OPL3 music synthesis
+## 10. WiggleHack II — tall-wall texture shimmer
+
+Vanilla clamps the wall texture scale to a fixed `64*FRACUNIT` with 12-bit height
+precision (`HEIGHTBITS`), tuned for 128-tall walls. On taller walls — and at hi-res
+— that fixed precision makes wall textures visibly **"wiggle"/shimmer** vertically as
+the view moves. Ported **WiggleHack II** (Kurt Baumgardner & Andrey Budko, via
+Woof/prboom): the fixed-point precision and the scale clamp are chosen **per wall**
+from the sector height.
+
+| Symptom | Root cause | Fix | Files |
+|---|---|---|---|
+| Tall walls shimmer/wobble vertically as you move | fixed 12-bit `HEIGHTBITS` + fixed `64*FRACUNIT` scale clamp, tuned for 128px walls | `R_FixWiggle(frontsector)` (keyed on sector height) sets a per-wall `heightbits`/`invhgtbits` and `max_rwscale` from an 8-entry `scale_values` table; `R_ScaleFromGlobalAngle` clamps to `max_rwscale`; `topfrac`/`bottomfrac`/`pixhigh`/`pixlow` widened to `int64_t` and the frac math shifts by the runtime `invhgtbits` | `r_segs.c`, `r_main.c`, `r_defs.h` (`sector_t.cachedheight`/`scaleindex`) |
+
+Purely a renderer-precision change — no playsim effect, so it's demo/netgame-safe. If
+tall walls ever shimmer again, check `R_FixWiggle`/`max_rwscale` in `r_segs.c`.
+
+---
+
+## 11. OPL3 music synthesis
 
 The DOS backend played music through AWE32/EMU8K hardware MIDI (`djgpp/emu8kmid.c`)
 and a MUS→MIDI converter (`djgpp/mmus2mid.c`) — neither portable, neither built by
@@ -235,6 +253,33 @@ from the MUS/MIDI header (so it needs no `W_LumpLength` plumbing) and calls
 mixes it over the SFX, scaled by `snd_MusicVolume`. All state changes are guarded
 with `SDL_LockAudioStream` (the sequencer runs on the audio thread). `MUSRATE` in
 `i_mus.c` was changed from aidoom's 11025 to **44100** to match `OUT_FREQ`.
+
+---
+
+## 12. Renderer-correctness batch (Woof parity)
+
+A survey of Woof's software renderer against SMMU's found it already at parity for
+most things (dynamic visplanes/drawsegs/vissprites, tutti-frutti, ghost monsters,
+Boom 271/272 sky, `dc_texheight`, WiggleHack II §10). These smaller correctness /
+crash-safety fixes were still missing and were ported (all renderer-only →
+demo/netgame-safe):
+
+| Symptom | Fix | Files |
+|---|---|---|
+| Segs/walls flicker or leave HOM on very large maps / geometry far from the origin | `R_PointToAngleCrispy` + `SlopeDivCrispy` (overflow-safe 64-bit angle) at the BSP clip call sites; the playsim keeps vanilla `R_PointToAngle` | `tables.c`, `r_main.c`, `r_bsp.c` |
+| Sprites clipped at the wrong Y / garbage when tall or drawn at close range (large `spryscale`); tall (DeePsea) sprite posts | `sprtopscreen` → `int64_t`; `R_DrawMaskedColumn` tracks cumulative tall-post topdeltas; removed the 32-bit truncation in `R_RenderMaskedSegRange` | `r_things.c/.h`, `r_segs.c` |
+| Sprites jump/flicker/vanish near the screen edge (`tx*xscale` / `tz<<2` 32-bit overflow) | `FixedMul64` for the projection; overflow-safe side cull; `vx1` guard for degenerate 1-column sprites | `m_fixed.h`, `r_things.c` |
+| Garbage texture column looking down a long wall (`finetangent[]` index overflow) | mask the index with `0xFFF` | `r_segs.c` |
+| OOB read / garbage columns on flipped or screen-edge sprites in the **release** build | `R_DrawVisSprite` clamps the column (`continue`/`break`) instead of a RANGECHECK-only `I_Error` | `r_things.c` |
+| Flicker / nondeterministic draw order of sprites at identical distance | stable merge sort (`>=` + reverse-fill), matching Woof | `r_things.c` |
+| Crash on a malformed/hostile `TEXTURE1` (out-of-range patch index) | bounds-check the mappatch index against `nummappatches` | `r_data.c` |
+
+Deliberately NOT ported (features / out of scope for a deterministic 640×400 4:3
+port): brightmaps, sky-color drawer / SKYDEFS, non-power-of-2 textures, truecolor,
+uncapped-framerate interpolation, widescreen, the `R_MapPlane` precision rewrite
+(sub-pixel), drawseg-bucketing / `solidcol` rewrite (perf/architectural). The one
+remaining known render gap is **tall single-patch (DeePsea, >254-row) textures**
+(§9) — relevant only to modern limit-removing PWADs.
 
 ---
 

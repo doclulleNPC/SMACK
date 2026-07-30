@@ -50,6 +50,17 @@ int SlopeDiv(unsigned num, unsigned den)
   return ans <= SLOPERANGE ? ans : SLOPERANGE;
 }
 
+// [FG] overflow-safe SlopeDiv flavour, only used by R_PointToAngleCrispy
+int SlopeDivCrispy(unsigned num, unsigned den)
+{
+  unsigned long long ans;
+
+  if (den < 512)
+    return SLOPERANGE;
+  ans = ((unsigned long long)num << 3) / (den >> 8);
+  return ans <= SLOPERANGE ? (int)ans : SLOPERANGE;
+}
+
 const int finetangent[4096] = { -170910304,
   -56965752,-34178904,-24413316,-18988036,-15535599,-13145455,-11392683,
   -10052327,-8994149,-8137527,-7429880,-6835455,-6329090,-5892567,-5512368,

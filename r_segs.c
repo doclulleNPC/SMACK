@@ -25,6 +25,8 @@
 static const char
 rcsid[] = "$Id: r_segs.c,v 1.16 1998/05/03 23:02:01 killough Exp $";
 
+#include <stdint.h>
+
 #include "doomstat.h"
 #include "r_main.h"
 #include "r_bsp.h"
@@ -68,13 +70,13 @@ static int      worldtop;
 static int      worldbottom;
 static int      worldhigh;
 static int      worldlow;
-static fixed_t  pixhigh;
-static fixed_t  pixlow;
+static int64_t  pixhigh;    // WiggleHack II: 64-bit to avoid overflow
+static int64_t  pixlow;
 static fixed_t  pixhighstep;
 static fixed_t  pixlowstep;
-static fixed_t  topfrac;
+static int64_t  topfrac;
 static fixed_t  topstep;
-static fixed_t  bottomfrac;
+static int64_t  bottomfrac;
 static fixed_t  bottomstep;
 
 //#define TRANWATER
@@ -188,7 +190,7 @@ void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2)
           if (t + (long long) textureheight[texnum] * spryscale < 0 ||
               t > (long long) MAX_SCREENHEIGHT << FRACBITS*2)
             continue;        // skip if the texture is out of screen's range
-          sprtopscreen = (long)(t >> FRACBITS);
+          sprtopscreen = t >> FRACBITS;   // keep 64-bit (no truncation)
         }
 
         dc_iscale = 0xffffffffu / (unsigned) spryscale;
@@ -223,6 +225,52 @@ void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2)
 #define HEIGHTBITS 12
 #define HEIGHTUNIT (1<<HEIGHTBITS)
 
+// WiggleHack II -- dynamic wall/texture rescaler by Kurt "kb1" Baumgardner and
+// Andrey "Entryway" Budko (via Woof/prboom). Vanilla clamps the wall scale to a
+// fixed 64*FRACUNIT with 12-bit height precision, tuned for 128-tall walls; on
+// taller walls / higher resolutions the fixed precision makes textures visibly
+// "wiggle" as the view moves. This adjusts the precision and the scale clamp
+// per wall, keyed on the sector height.
+int max_rwscale = 64 * FRACUNIT;    // extern'd: R_ScaleFromGlobalAngle clamps to it
+static int heightbits = HEIGHTBITS;
+static int heightunit = HEIGHTUNIT;
+static int invhgtbits = FRACBITS - HEIGHTBITS;
+
+static const struct { int clamp; int heightbits; } scale_values[8] =
+{
+  {2048 * FRACUNIT, 12}, {1024 * FRACUNIT, 12}, {1024 * FRACUNIT, 11},
+  { 512 * FRACUNIT, 11}, { 512 * FRACUNIT, 10}, { 256 * FRACUNIT, 10},
+  { 256 * FRACUNIT,  9}, { 128 * FRACUNIT,  9}
+};
+
+void R_FixWiggle(sector_t *sector)
+{
+  static int lastheight = 0;
+  int height = (sector->ceilingheight - sector->floorheight) >> FRACBITS;
+
+  if (height < 1)             // disallow negative; 1 forces cache init
+    height = 1;
+
+  if (height != lastheight)
+    {
+      lastheight = height;
+
+      if (height != sector->cachedheight)   // init or moving sector
+        {
+          sector->cachedheight = height;
+          sector->scaleindex = 0;
+          height >>= 7;
+          while (height >>= 1)              // pick the scale bucket
+            sector->scaleindex++;
+        }
+
+      max_rwscale = scale_values[sector->scaleindex].clamp;
+      heightbits  = scale_values[sector->scaleindex].heightbits;
+      heightunit  = (1 << heightbits);
+      invhgtbits  = FRACBITS - heightbits;
+    }
+}
+
 static void R_RenderSegLoop (void)
 {
   fixed_t  texturecolumn = 0;   // shut up compiler warning
@@ -230,7 +278,7 @@ static void R_RenderSegLoop (void)
   for ( ; rw_x < rw_stopx ; rw_x ++)
     {
       // mark floor / ceiling areas
-      int yh, yl = (topfrac+HEIGHTUNIT-1)>>HEIGHTBITS;
+      int yh, yl = (int)((topfrac+heightunit-1)>>heightbits);
 
       // no space above wall?
       int bottom, top = ceilingclip[rw_x]+1;
@@ -252,7 +300,7 @@ static void R_RenderSegLoop (void)
             }
         }
 
-      yh = bottomfrac>>HEIGHTBITS;
+      yh = (int)(bottomfrac>>heightbits);
 
       bottom = floorclip[rw_x]-1;
       if (yh > bottom)
@@ -310,6 +358,7 @@ static void R_RenderSegLoop (void)
 
           // calculate texture offset
           angle_t angle =(rw_centerangle+xtoviewangle[rw_x])>>ANGLETOFINESHIFT;
+          angle &= 0xFFF;   // prevent finetangent[] index overflow (long walls)
           texturecolumn = rw_offset-FixedMul(finetangent[angle],rw_distance);
           texturecolumn >>= FRACBITS;
 
@@ -341,7 +390,7 @@ static void R_RenderSegLoop (void)
           if (toptexture)
             {
               // top wall
-              int mid = pixhigh>>HEIGHTBITS;
+              int mid = (int)(pixhigh>>heightbits);
               pixhigh += pixhighstep;
 
               if (mid >= floorclip[rw_x])
@@ -370,7 +419,7 @@ static void R_RenderSegLoop (void)
 
           if (bottomtexture)          // bottom wall
             {
-              int mid = (pixlow+HEIGHTUNIT-1)>>HEIGHTBITS;
+              int mid = (int)((pixlow+heightunit-1)>>heightbits);
               pixlow += pixlowstep;
 
               // no space above wall?
@@ -500,6 +549,10 @@ void R_StoreWallRange(const int start, const int stop)
   // killough 1/6/98, 2/1/98: remove limit on openings
   // killough 8/1/98: Replaced code with a static limit 
   // guaranteed to be big enough
+
+  // WiggleHack II: tune the fixed-point precision and the scale clamp for this
+  // sector's wall height BEFORE R_ScaleFromGlobalAngle (which clamps to max_rwscale)
+  R_FixWiggle(frontsector);
 
   // calculate scale at both ends and step
   ds_p->scale1 = rw_scale =
@@ -762,14 +815,15 @@ void R_StoreWallRange(const int start, const int stop)
     }
 
   // calculate incremental stepping values for texture edges
-  worldtop >>= 4;
-  worldbottom >>= 4;
+  // WiggleHack II: shift by the per-wall invhgtbits, 64-bit frac math
+  worldtop >>= invhgtbits;
+  worldbottom >>= invhgtbits;
 
   topstep = -FixedMul (rw_scalestep, worldtop);
-  topfrac = (centeryfrac>>4) - FixedMul (worldtop, rw_scale);
+  topfrac = ((int64_t)centeryfrac>>invhgtbits) - (((int64_t)worldtop*rw_scale)>>FRACBITS);
 
   bottomstep = -FixedMul (rw_scalestep,worldbottom);
-  bottomfrac = (centeryfrac>>4) - FixedMul (worldbottom, rw_scale);
+  bottomfrac = ((int64_t)centeryfrac>>invhgtbits) - (((int64_t)worldbottom*rw_scale)>>FRACBITS);
 
 #ifdef TRANWATER
   if (floorplane2)
@@ -782,17 +836,17 @@ void R_StoreWallRange(const int start, const int stop)
 
   if (backsector)
     {
-      worldhigh >>= 4;
-      worldlow >>= 4;
+      worldhigh >>= invhgtbits;
+      worldlow >>= invhgtbits;
 
       if (worldhigh < worldtop)
         {
-          pixhigh = (centeryfrac>>4) - FixedMul (worldhigh, rw_scale);
+          pixhigh = ((int64_t)centeryfrac>>invhgtbits) - (((int64_t)worldhigh*rw_scale)>>FRACBITS);
           pixhighstep = -FixedMul (rw_scalestep,worldhigh);
         }
       if (worldlow > worldbottom)
         {
-          pixlow = (centeryfrac>>4) - FixedMul (worldlow, rw_scale);
+          pixlow = ((int64_t)centeryfrac>>invhgtbits) - (((int64_t)worldlow*rw_scale)>>FRACBITS);
           pixlowstep = -FixedMul (rw_scalestep,worldlow);
         }
     }

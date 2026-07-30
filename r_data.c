@@ -595,9 +595,11 @@ void R_InitTextures (void)
 
       for (j=0 ; j<texture->patchcount ; j++, mpatch++, patch++)
         {
+          int p = SHORT(mpatch->patch);
           patch->originx = SHORT(mpatch->originx);
           patch->originy = SHORT(mpatch->originy);
-          patch->patch = patchlookup[SHORT(mpatch->patch)];
+          // bounds-check the patch index (malformed/hostile TEXTURE1)
+          patch->patch = (p >= 0 && p < nummappatches) ? patchlookup[p] : -1;
           if (patch->patch == -1)
             {	      // killough 8/8/98
                 // sf: error_printf

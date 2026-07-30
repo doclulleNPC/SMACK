@@ -310,24 +310,32 @@ vissprite_t *R_NewVisSprite(void)
 short   *mfloorclip;
 short   *mceilingclip;
 fixed_t spryscale;
-fixed_t sprtopscreen;
+int64_t sprtopscreen;   // WiggleFix: 64-bit (tall sprites / close range)
 
 void R_DrawMaskedColumn(column_t *column)
 {
-  int topscreen, bottomscreen;
+  int64_t topscreen, bottomscreen;   // WiggleFix: 64-bit
   fixed_t basetexturemid = dc_texturemid;
-  
+  int top = -1;                      // support tall (DeePsea) sprite posts
+
   dc_texheight = 0; // killough 11/98
 
   while (column->topdelta != 0xff)
     {
+      // tall-sprite support: a topdelta <= the previous is a cumulative
+      // continuation (DeePsea convention), otherwise it's absolute
+      if (column->topdelta <= top)
+        top += column->topdelta;
+      else
+        top = column->topdelta;
+
       // calculate unclipped screen coordinates for post
-      topscreen = sprtopscreen + spryscale*column->topdelta;
-      bottomscreen = topscreen + spryscale*column->length;
+      topscreen = sprtopscreen + (int64_t)spryscale*top;
+      bottomscreen = topscreen + (int64_t)spryscale*column->length;
 
       // Here's where "sparkles" come in -- killough:
-      dc_yl = (topscreen+FRACUNIT-1)>>FRACBITS;
-      dc_yh = (bottomscreen-1)>>FRACBITS;
+      dc_yl = (int)((topscreen+FRACUNIT-1)>>FRACBITS);
+      dc_yh = (int)((bottomscreen-1)>>FRACBITS);
 
       if (dc_yh >= mfloorclip[dc_x])
         dc_yh = mfloorclip[dc_x]-1;
@@ -339,7 +347,7 @@ void R_DrawMaskedColumn(column_t *column)
       if (dc_yl <= dc_yh && dc_yh < viewheight )
         {
           dc_source = (byte *) column + 3;
-          dc_texturemid = basetexturemid - (column->topdelta<<FRACBITS);
+          dc_texturemid = basetexturemid - (top<<FRACBITS);
 
           // Drawn by either R_DrawColumn
           //  or (SHADOW) R_DrawFuzzColumn.
@@ -398,10 +406,12 @@ void R_DrawVisSprite(vissprite_t *vis, int x1, int x2)
     {
       texturecolumn = frac>>FRACBITS;
 
-#ifdef RANGECHECK
-      if (texturecolumn < 0 || texturecolumn >= SHORT(patch->width))
-        I_Error ("R_DrawSpriteRange: bad texturecolumn");
-#endif
+      // clamp the column (release build had no guard -> OOB read / garbage
+      // on flipped or screen-edge sprites)
+      if (texturecolumn < 0)
+        continue;
+      if (texturecolumn >= SHORT(patch->width))
+        break;
 
       column = (column_t *)((byte *) patch +
                             LONG(patch->columnofs[texturecolumn]));
@@ -449,8 +459,8 @@ void R_ProjectSprite (mobj_t* thing)
   gyt = FixedMul(tr_y,viewcos);
   tx = -(gyt+gxt);
 
-  // too far off the side?
-  if (abs(tx)>(tz<<2))
+  // too far off the side? (abs(tx)>>2 > tz avoids the tz<<2 overflow)
+  if (abs(tx)>>2 > tz)
     return;
 
     // decide which patch to use for sprite relative to player
@@ -484,20 +494,24 @@ void R_ProjectSprite (mobj_t* thing)
       flip = (boolean) sprframe->flip[0];
     }
 
-  // calculate edges of the shape
+  // calculate edges of the shape (FixedMul64: no 32-bit overflow near edges)
   tx -= spriteoffset[lump];
-  x1 = (centerxfrac + FixedMul(tx,xscale)) >>FRACBITS;
+  x1 = (int)((centerxfrac + FixedMul64(tx,xscale)) >>FRACBITS);
 
     // off the right side?
   if (x1 > viewwidth)
     return;
 
-  tx +=  spritewidth[lump];
-  x2 = ((centerxfrac + FixedMul(tx,xscale)) >> FRACBITS) - 1;
+  {
+    const int vx1 = x1 < 0 ? 0 : x1;   // guard degenerate 1-column sprites
 
-    // off the left side
-  if (x2 < 0)
-    return;
+    tx +=  spritewidth[lump];
+    x2 = (int)(((centerxfrac + FixedMul64(tx,xscale)) >> FRACBITS)) - 1;
+
+      // off the left side, or collapsed to nothing after clamping
+    if (x2 < vx1)
+      return;
+  }
 
   gzt = thing->z + spritetopoffset[lump];
 
@@ -814,7 +828,7 @@ static void msort(vissprite_t **s, vissprite_t **t, int n)
       msort(s1, t, n1);
       msort(s2, t, n2);
 
-      while ((*s1)->scale > (*s2)->scale ?
+      while ((*s1)->scale >= (*s2)->scale ?   // >= : stable equal-distance order
              (*d++ = *s1++, --n1) : (*d++ = *s2++, --n2));
 
       if (n2)
@@ -857,8 +871,8 @@ void R_SortVisSprites (void)
                                   * sizeof *vissprite_ptrs);
         }
 
-      while (--i>=0)
-        vissprite_ptrs[i] = vissprites+i;
+      while (--i>=0)   // fill backwards so the merge sort is stable
+        vissprite_ptrs[num_vissprite-i-1] = vissprites+i;
 
       // killough 9/22/98: replace qsort with merge sort, since the keys
       // are roughly in order to begin with, due to BSP rendering.

@@ -33,6 +33,16 @@ backend under `linux/` that did not build/run cleanly.
   making the SDL 8-bit output ¼ brightness. Fixed to full range.
 - **Renderer overflow guard** — the static `openings[]` array had no bounds check;
   a pathological view could silently corrupt memory. Now `I_Error`s instead.
+- **WiggleHack II** — tall walls no longer shimmer/wiggle as you move (per-wall
+  fixed-point precision + scale clamp, ported from Woof; `r_segs.c`/`r_main.c`).
+- **Renderer-correctness batch** (Woof parity) — overflow-safe BSP clip angle
+  (`R_PointToAngleCrispy`, fixes seg flicker/HOM on huge maps), 64-bit sprite
+  clipping (`sprtopscreen`) + tall-sprite posts, 64-bit sprite projection
+  (`FixedMul64`, fixes edge flicker), `finetangent[]` mask, release-safe sprite
+  column clamp, stable equal-distance sprite sort, and a `TEXTURE1` bounds check.
+- **Settings now save on exit** — `atexit(I_Quit)` was never registered, so config
+  was never written; also window-close now quits+saves. Config lives next to the
+  binary (`run/smmu.cfg`).
 - **Screen-size view overflow** — blocks ≥ 11 are clamped to fullscreen in one place
   (`R_ExecuteSetViewSize`), fixing a release-only `R_RenderSegLoop` crash.
 

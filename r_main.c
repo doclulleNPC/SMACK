@@ -24,6 +24,9 @@
 
 static const char rcsid[] = "$Id: r_main.c,v 1.13 1998/05/07 00:47:52 killough Exp $";
 
+#include <stdint.h>
+#include <limits.h>
+
 #include "doomstat.h"
 #include "i_video.h"
 #include "c_runcmd.h"
@@ -168,8 +171,39 @@ int R_PointOnSegSide(fixed_t x, fixed_t y, seg_t *line)
 //
 // killough 5/2/98: reformatted, cleaned up
 
+// [FG] overflow-safe R_PointToAngle for the renderer's BSP/seg clipping on very
+// large maps or geometry far from the origin (the plain version overflows the
+// 32-bit x-viewx / y-viewy before SlopeDiv, causing seg flicker / HOM). Not
+// used by the playsim, which keeps the vanilla R_PointToAngle -- demo-safe.
+angle_t R_PointToAngleCrispy(fixed_t x, fixed_t y)
+{
+  int64_t y_viewy = (int64_t)y - viewy;
+  int64_t x_viewx = (int64_t)x - viewx;
+
+  if (x_viewx < INT_MIN || x_viewx > INT_MAX ||
+      y_viewy < INT_MIN || y_viewy > INT_MAX)
+    {
+      // preserve the angle by halving the distance in both directions
+      x = (int)(x_viewx / 2 + viewx);
+      y = (int)(y_viewy / 2 + viewy);
+    }
+
+  return (y -= viewy, (x -= viewx) || y) ?
+    x >= 0 ?
+      y >= 0 ?
+        (x > y) ? tantoangle[SlopeDivCrispy(y,x)] :                      // octant 0
+                ANG90-1-tantoangle[SlopeDivCrispy(x,y)] :                // octant 1
+        x > (y = -y) ? -tantoangle[SlopeDivCrispy(y,x)] :                // octant 8
+                       ANG270+tantoangle[SlopeDivCrispy(x,y)] :          // octant 7
+      y >= 0 ? (x = -x) > y ? ANG180-1-tantoangle[SlopeDivCrispy(y,x)] : // octant 3
+                            ANG90 + tantoangle[SlopeDivCrispy(x,y)] :    // octant 2
+        (x = -x) > (y = -y) ? ANG180+tantoangle[SlopeDivCrispy(y,x)] :   // octant 4
+                              ANG270-1-tantoangle[SlopeDivCrispy(x,y)] : // octant 5
+    0;
+}
+
 angle_t R_PointToAngle(fixed_t x, fixed_t y)
-{       
+{
   return (y -= viewy, (x -= viewx) || y) ?
     x >= 0 ?
       y >= 0 ? 
@@ -215,14 +249,15 @@ fixed_t R_ScaleFromGlobalAngle(angle_t visangle)
   int     angleb;
   int     den;
   fixed_t num;
+  extern int max_rwscale;   // WiggleHack II: per-wall clamp set by R_FixWiggle
 
   anglea = ANG90 + (visangle-viewangle);
   angleb = ANG90 + (visangle-rw_normalangle);
   den = FixedMul(rw_distance, finesine[anglea>>ANGLETOFINESHIFT]);
   num = FixedMul(projection, finesine[angleb>>ANGLETOFINESHIFT]);
 
-  return den > num>>16 ? (num = FixedDiv(num, den)) > 64*FRACUNIT ?
-    64*FRACUNIT : num < 256 ? 256 : num : 64*FRACUNIT;
+  return den > num>>16 ? (num = FixedDiv(num, den)) > max_rwscale ?
+    max_rwscale : num < 256 ? 256 : num : max_rwscale;
 }
 
 //
