@@ -26,6 +26,7 @@ static const char
 rcsid[] = "$Id: r_segs.c,v 1.16 1998/05/03 23:02:01 killough Exp $";
 
 #include <stdint.h>
+#include <limits.h>
 
 #include "doomstat.h"
 #include "r_main.h"
@@ -505,9 +506,9 @@ fixed_t R_PointToDist2(fixed_t x1, fixed_t y1, fixed_t x2, fixed_t y2)
 //
 void R_StoreWallRange(const int start, const int stop)
 {
-  fixed_t hyp;
-  fixed_t sineval;
-  angle_t distangle, offsetangle;
+  // long-wall precision (computed once, reused for rw_distance and rw_offset)
+  int64_t dx, dy, dx1, dy1;
+  unsigned len;
 
   if (ds_p == drawsegs+maxdrawsegs)   // killough 1/98 -- fix 2s line HOM
     {
@@ -528,17 +529,20 @@ void R_StoreWallRange(const int start, const int stop)
   // mark the segment as visible for auto map
   linedef->flags |= ML_MAPPED;
 
-  // calculate rw_distance for scale calculation
-  rw_normalangle = curline->angle + ANG90;
-  offsetangle = abs(rw_normalangle-rw_angle1);
+  // calculate rw_distance for scale calculation (long-wall precision fix)
+  rw_normalangle = curline->r_angle + ANG90;   // re-computed seg angle
 
-  if (offsetangle > ANG90)
-    offsetangle = ANG90;
-
-  distangle = ANG90 - offsetangle;
-  hyp = R_PointToDist (curline->v1->x, curline->v1->y);  
-  sineval = finesine[distangle>>ANGLETOFINESHIFT];
-  rw_distance = FixedMul(hyp, sineval);
+  len = curline->r_length;                      // re-computed seg length
+  // >>1 to avoid int64 overflow in the cross/dot products below
+  dx  = ((int64_t)curline->v2->x - curline->v1->x) >> 1;
+  dy  = ((int64_t)curline->v2->y - curline->v1->y) >> 1;
+  dx1 = ((int64_t)viewx - curline->v1->x) >> 1;
+  dy1 = ((int64_t)viewy - curline->v1->y) >> 1;
+  {
+    int64_t dist = ((dy * dx1 - dx * dy1) / len) << 1;   // perpendicular distance
+    rw_distance = (fixed_t)(dist < INT_MIN ? INT_MIN :
+                            dist > INT_MAX ? INT_MAX : dist);
+  }
 
   ds_p->x1 = rw_x = start;
   ds_p->x2 = stop;
@@ -761,19 +765,9 @@ void R_StoreWallRange(const int start, const int stop)
 
   if (segtextured)
     {
-      offsetangle = rw_normalangle-rw_angle1;
-
-      if (offsetangle > ANG180)
-        offsetangle = -offsetangle;
-
-      if (offsetangle > ANG90)
-        offsetangle = ANG90;
-
-      sineval = finesine[offsetangle >>ANGLETOFINESHIFT];
-      rw_offset = FixedMul (hyp, sineval);
-
-      if (rw_normalangle-rw_angle1 < ANG180)
-        rw_offset = -rw_offset;
+      // long-wall precision: rw_offset is the projection along the seg (dot
+      // product), signed -- no separate angle-based sign flip needed
+      rw_offset = (fixed_t)(((dx * dx1 + dy * dy1) / len) * 2);
 
       rw_offset += sidedef->textureoffset + curline->offset;
 

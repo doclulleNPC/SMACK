@@ -35,6 +35,9 @@ backend under `linux/` that did not build/run cleanly.
   a pathological view could silently corrupt memory. Now `I_Error`s instead.
 - **WiggleHack II** — tall walls no longer shimmer/wiggle as you move (per-wall
   fixed-point precision + scale clamp, ported from Woof; `r_segs.c`/`r_main.c`).
+- **Long-wall wobble fix** — wall textures no longer shear/mis-align on long walls
+  in large maps (precise per-seg length/angle at load + int64 distance/offset math;
+  `p_setup.c`/`r_segs.c`).
 - **Tall (DeePsea, >254-row) textures** — modern limit-removing PWADs' tall
   textures (e.g. Legacy of Rust `ZZZGATE*`) no longer render as scrambled bands;
   a flat opaque composite is built for 1s walls and a cumulative-topdelta posted

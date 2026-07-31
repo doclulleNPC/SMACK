@@ -296,6 +296,26 @@ topdeltas. The relative logic is a no-op for ≤254-tall content, so stock textu
 
 ---
 
+## 14. Long-wall wobble (fixed-point precision)
+
+On long walls in large maps, vanilla's fixed-point `R_PointToDist` /
+angle-from-`rw_angle1` math loses precision, so the wall texture visibly shears /
+mis-aligns as the view moves. Ported Woof's fix:
+
+- **`P_SegLengths`** (`p_setup.c`, called from `P_SetupLevel`) pre-computes, per seg,
+  a precise length (`r_length = sqrt(dx²+dy²)/2`) and angle (`r_angle`, via the
+  overflow-safe `R_PointToAngleCrispy`, falling back to the BSP angle if it differs by
+  >~30°). Render data only → demo/netgame-safe.
+- **`R_StoreWallRange`** (`r_segs.c`) computes `rw_distance` (perpendicular distance)
+  and `rw_offset` (along-seg projection) from **int64** cross/dot products of the seg
+  and view vectors, clamped to `fixed_t`, instead of the trig path. `seg_t` gained
+  `r_length`/`r_angle` (`r_defs.h`).
+
+The result is identical for short walls (verified pixel-identical on DOOM2 MAP01) and
+steady on long ones.
+
+---
+
 ## Config persistence
 
 All console/config variables (screen size, HUD style, key bindings, automap options

@@ -29,7 +29,10 @@ rcsid[] = "$Id: p_setup.c,v 1.16 1998/05/07 00:56:49 killough Exp $";
 #include "d_main.h"
 #include "hu_stuff.h"
 #include "wi_stuff.h"
+#include <math.h>
+
 #include "doomstat.h"
+#include "r_state.h"    // viewx/viewy (used transiently by P_SegLengths)
 #include "hu_frags.h"
 #include "m_bbox.h"
 #include "m_argv.h"
@@ -979,6 +982,47 @@ void P_LoadOlo();
 extern int level_error;
 
 //
+// P_SegLengths
+//
+// Pre-compute a precise length and angle for each seg, used by R_StoreWallRange
+// to fix the "long wall wobble" (fixed-point precision loss on long walls).
+// Render data only -- does not touch the playsim, so it is demo/netgame-safe.
+
+void P_SegLengths(void)
+{
+  int i;
+  fixed_t oldviewx = viewx, oldviewy = viewy;   // restore afterwards
+
+  for (i = 0; i < numsegs; i++)
+    {
+      seg_t *li = segs + i;
+      int64_t dx = (int64_t)li->v2->x - li->v1->x;
+      int64_t dy = (int64_t)li->v2->y - li->v1->y;
+      angle_t diff;
+
+      li->r_length = (unsigned int)(sqrt((double)dx*dx + (double)dy*dy) / 2);
+      if (!li->r_length)
+        li->r_length = 1;              // guard against divide-by-zero
+
+      // re-derive the seg angle at full precision (crispy overflow-safe)
+      viewx = li->v1->x;
+      viewy = li->v1->y;
+      li->r_angle = R_PointToAngleCrispy(li->v2->x, li->v2->y);
+
+      // if it differs from the BSP angle by more than ~30 degrees (degenerate
+      // seg), fall back to the stored angle
+      diff = li->r_angle - li->angle;
+      if (diff > ANG180)
+        diff = 0u - diff;
+      if (diff > ANG90/3)              // ANG90/3 ~= 30 degrees
+        li->r_angle = li->angle;
+    }
+
+  viewx = oldviewx;
+  viewy = oldviewy;
+}
+
+//
 // P_SetupLevel
 //
 // killough 5/3/98: reformatted, cleaned up
@@ -1087,6 +1131,8 @@ void P_SetupLevel(char *mapname, int playermask, skill_t skill)
   P_LoadSubsectors(lumpnum+ML_SSECTORS);
   P_LoadNodes     (lumpnum+ML_NODES);
   P_LoadSegs      (lumpnum+ML_SEGS);
+
+  P_SegLengths();   // long-wall precision: precompute seg length/angle
 
   DEBUGMSG("loaded level\n");
 

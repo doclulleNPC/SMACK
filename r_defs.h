@@ -251,6 +251,10 @@ typedef struct
   angle_t angle;
   side_t* sidedef;
   line_t* linedef;
+
+  // long-wall precision (P_SegLengths, r_segs.c): re-computed seg length/angle
+  unsigned int r_length;
+  angle_t      r_angle;
   
   // Sector references.
   // Could be retrieved from linedef, too
