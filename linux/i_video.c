@@ -404,7 +404,7 @@ static void I_CreateWindowAndRenderer(void)
 
   if (!window)
   {
-    window = SDL_CreateWindow("SMMU - Smack My Marine Up",
+    window = SDL_CreateWindow("SMACK!",
                               win_w, win_h,
                               SDL_WINDOW_RESIZABLE);
     if (!window) I_Error("SDL_CreateWindow failed: %s", SDL_GetError());
