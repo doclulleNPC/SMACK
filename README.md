@@ -14,7 +14,7 @@ renderer and quality-of-life fixes.
   pointer and modern-compiler issues.
 - **Sound** — SDL3 SFX mixer, plus authentic **OPL3 (Adlib) music** via Nuked-OPL3 +
   the IWAD's GENMIDI (no external soundfont).
-- **Hi-res 640×400** by default; window scaling via `SMMU_SCALE` / `-2/-3/-4` / `-geom`.
+- **Hi-res 640×400** by default; window scaling via `SMACK_SCALE` / `-2/-3/-4` / `-geom`.
 - **HUD** — one screen-size control cycling status bar → fullscreen text overlay →
   GZDoom-style graphical HUD (full + 50%) → 50%-scaled status bar.
 - **Textured automap** (aidoom-style).
@@ -32,7 +32,7 @@ See [`docs/CHANGES.md`](docs/CHANGES.md) for the full summary and
 Requires `gcc`, `pkg-config`, and SDL3 development libraries.
 
 ```sh
-make -f Makefile.sdl3          # release build -> obj/smmu, copied into run/
+make -f Makefile.sdl3          # release build -> obj/smack, copied into run/
 make -f Makefile.sdl3 debug    # debug build
 make -f Makefile.sdl3 clean
 ```
@@ -45,13 +45,14 @@ runtime image):
 
 ```sh
 cd run
-./smmu -iwad DOOM2.WAD
-./smmu -iwad DOOM2.WAD -file MYMAP.wad     # load a PWAD (note: -file, not -wad)
-./smmu -iwad doom1.wad -warp 1 -skill 4
+./smack -iwad DOOM2.WAD
+./smack -iwad DOOM2.WAD -file MYMAP.wad     # load a PWAD (note: -file, not -wad)
+./smack -iwad doom1.wad -warp 1 -skill 4
 ```
 
 See [`docs/PARAMETERS.md`](docs/PARAMETERS.md) for every command-line parameter.
-(The binary and the port's own PWAD are still named `smmu`/`smmu.wad` internally.)
+(The binary resolves its config/PWAD names from `argv[0]`, so it ships as `smack`
+alongside `smack.wad`/`smack.cfg`.)
 
 ## Credits & license
 

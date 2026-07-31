@@ -4,8 +4,8 @@ Every command-line parameter recognized by this SMMU build (enumerated from the
 `M_CheckParm` calls in the source). Parameters shown as `-foo VALUE` consume the
 following argument; the rest are on/off flags. Music and SFX are **on by default**.
 
-Usage: `./smmu -iwad DOOM2.WAD [options]` (run from the `run/` directory, or wherever
-the IWAD and `smmu.wad` live).
+Usage: `./smack -iwad DOOM2.WAD [options]` (run from the `run/` directory, or wherever
+the IWAD and `smack.wad` live).
 
 ---
 
@@ -17,7 +17,7 @@ the IWAD and `smmu.wad` live).
 | `-file WAD [WAD …]` | Load one or more PWADs on top of the IWAD. (There is **no** `-wad`.) |
 | `-deh FILE` / `-bex FILE` | Load a DeHackEd / BEX patch. |
 | `-dehout FILE` / `-bexout FILE` | Dump the DeHackEd/BEX processing log to FILE (debugging). |
-| `-config FILE` | Use FILE instead of the default `smmu.cfg`. |
+| `-config FILE` | Use FILE instead of the default `smack.cfg`. |
 | `-save DIR` | Set the savegame directory. |
 | `-noload` | Skip the `wadfile_1/2` preload listed in the config (handy when those point at a stale path). |
 | `@FILE` | Response file — read additional command-line arguments from FILE. |
@@ -82,7 +82,7 @@ the IWAD and `smmu.wad` live).
 | `-nodraw` | Don't render the 3D view (server-style / smoke test). |
 | `-noblit` | Render but don't blit to the screen. |
 | `-nomouse` | Disable mouse input. |
-| `-2` / `-3` / `-4` | Window scale ×2 / ×3 / ×4 (1280×800 / 1920×1200 / 2560×1600). Overrides `SMMU_SCALE`. |
+| `-2` / `-3` / `-4` | Window scale ×2 / ×3 / ×4 (1280×800 / 1920×1200 / 2560×1600). Overrides `SMACK_SCALE`. |
 | `-geom WxH` | Create the window at exactly `W`×`H` pixels; the 640×400 framebuffer is nearest-neighbour stretched to fit (e.g. `-geom 1280x800`). Overrides the scale flags. |
 
 **Legacy — inert in this SDL3 build** (they belong to the old X11/SVGAlib backends in
@@ -106,17 +106,17 @@ gameplay (released in menus), so `-grabmouse` is unnecessary.
 
 | Variable | Description |
 |---|---|
-| `SMMU_SCALE=N` | Window magnification on top of the 640×400 framebuffer (1 → 640×400, 2 → 1280×800, …). |
+| `SMACK_SCALE=N` | Window magnification on top of the 640×400 framebuffer (1 → 640×400, 2 → 1280×800, …). |
 | `SDL_VIDEODRIVER=dummy` | Run headless (no window) — useful for demo timing / smoke tests. |
 | `SDL_AUDIODRIVER=dummy` | Use a null audio device (no sound output). |
 
 ## Examples
 
 ```
-./smmu -iwad DOOM2.WAD                      # start DOOM II
-./smmu -iwad doom1.wad -warp 1 -skill 4     # DOOM shareware, MAP01, Ultra-Violence
-./smmu -iwad DOOM2.WAD -file MYMAP.wad      # load a PWAD
-./smmu -iwad DOOM2.WAD -fast -respawn       # fast, respawning monsters
-./smmu -iwad DOOM2.WAD -timedemo demo1      # benchmark a demo
-SMMU_SCALE=2 ./smmu -iwad DOOM2.WAD         # 1280x800 window
+./smack -iwad DOOM2.WAD                      # start DOOM II
+./smack -iwad doom1.wad -warp 1 -skill 4     # DOOM shareware, MAP01, Ultra-Violence
+./smack -iwad DOOM2.WAD -file MYMAP.wad      # load a PWAD
+./smack -iwad DOOM2.WAD -fast -respawn       # fast, respawning monsters
+./smack -iwad DOOM2.WAD -timedemo demo1      # benchmark a demo
+SMACK_SCALE=2 ./smack -iwad DOOM2.WAD         # 1280x800 window
 ```

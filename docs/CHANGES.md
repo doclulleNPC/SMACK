@@ -14,7 +14,7 @@ backend under `linux/` that did not build/run cleanly.
 
 - Fixed the link: `version.o` was missing from `OBJS` (undefined `VERSION`).
 - Fixed `make debug` (it fell through to the dead DOS `makefile`; now `-f Makefile.sdl3`).
-- Added a `run` target so every build drops the binary + `smmu.wad` symlink into `run/`.
+- Added a `run` target so every build drops the binary + `smack.wad` symlink into `run/`.
 - Added the load-bearing compiler flags a from-scratch build needs on modern gcc:
   - **`-fcommon`** — the 1999 tree has tentative-definition globals that `-fno-common`
     (today's default) rejects as multiple-definition link errors.
@@ -50,7 +50,7 @@ backend under `linux/` that did not build/run cleanly.
   column clamp, stable equal-distance sprite sort, and a `TEXTURE1` bounds check.
 - **Settings now save on exit** — `atexit(I_Quit)` was never registered, so config
   was never written; also window-close now quits+saves. Config lives next to the
-  binary (`run/smmu.cfg`).
+  binary (`run/smack.cfg`).
 - **Screen-size view overflow** — blocks ≥ 11 are clamped to fullscreen in one place
   (`R_ExecuteSetViewSize`), fixing a release-only `R_RenderSegLoop` crash.
 
@@ -72,7 +72,7 @@ backend under `linux/` that did not build/run cleanly.
   only captured during active gameplay.
 - **Window sizing from the command line** — `-2` / `-3` / `-4` scale the window ×2/×3/×4
   and `-geom WxH` sets an explicit size (SDL nearest-neighbour stretches the 640×400
-  framebuffer). These revive the old X11-backend flags on top of `SMMU_SCALE`. (The
+  framebuffer). These revive the old X11-backend flags on top of `SMACK_SCALE`. (The
   other legacy flags — `-disp`, `-noaccel`, `-grabmouse` — were intentionally left out;
   SDL/the auto-grab already cover them.)
 
@@ -103,8 +103,8 @@ One unified `screensize` control now runs the whole progression:
 ## Persistence
 
 - All settings (screen size, HUD, key bindings, automap options, gamma, volumes, …)
-  save to `~/.smmu/smmu.cfg` on exit. **Window size is not persisted** (it derives
-  from `SMMU_SCALE` each launch).
+  save to `run (next to the binary)/smack.cfg` on exit. **Window size is not persisted** (it derives
+  from `SMACK_SCALE` each launch).
 
 ## Documentation
 
@@ -120,10 +120,10 @@ One unified `screensize` control now runs the whole progression:
 ## Command-line quick reference
 
 ```
-./smmu -iwad DOOM2.WAD                 # required: which IWAD
-./smmu -iwad DOOM2.WAD -file MY.wad    # load a PWAD (note: -file, not -wad)
-./smmu -iwad doom1.wad -warp 1         # jump to a map
-SMMU_SCALE=2 ./smmu -iwad DOOM2.WAD    # 2x window (1280x800)
+./smack -iwad DOOM2.WAD                 # required: which IWAD
+./smack -iwad DOOM2.WAD -file MY.wad    # load a PWAD (note: -file, not -wad)
+./smack -iwad doom1.wad -warp 1         # jump to a map
+SMACK_SCALE=2 ./smack -iwad DOOM2.WAD    # 2x window (1280x800)
 ```
 
 Music/SFX are on by default; `-nosound` / `-nomusic` disable them.

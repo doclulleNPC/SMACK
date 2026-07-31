@@ -1560,7 +1560,7 @@ void D_DoomMain(void)
   C_Seperator();
   C_Printf(	
 	   "\n"
-	   FC_GRAY "SMMU" FC_RED " by Simon Howard 'Fraggle'\n"
+	   FC_GRAY "SMACK!" FC_RED " (SMMU by Simon Howard 'Fraggle')\n"
 	   "http://fraggle.tsx.org/ \n"
 	   "version %i.%02i '%s' \n\n",
 	   VERSION/100, VERSION%100, version_name);

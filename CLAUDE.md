@@ -17,8 +17,8 @@ The modern build uses `Makefile.sdl3` (NOT the root `makefile`, which is the
 original DJGPP/DOS build and is kept only for reference):
 
 ```bash
-make -f Makefile.sdl3          # release build -> obj/smmu
-make -f Makefile.sdl3 debug    # debug build (-O0 -DRANGECHECK -DINSTRUMENTED) -> objdebug/smmu
+make -f Makefile.sdl3          # release build -> obj/smack
+make -f Makefile.sdl3 debug    # debug build (-O0 -DRANGECHECK -DINSTRUMENTED) -> objdebug/smack
 make -f Makefile.sdl3 clean     # remove obj/ and objdebug/
 ```
 
@@ -43,21 +43,21 @@ The binary resolves its data directory from `argv[0]` via `D_DoomExeDir()`, so
 it must run alongside its WADs. Use the prepared `run/` directory:
 
 ```bash
-cd run && ./smmu -iwad DOOM2.WAD          # smmu.wad (the port's PWAD) is symlinked here
-cd run && ./smmu -iwad doom1.wad -warp 1  # shareware IWAD, jump to MAP01
+cd run && ./smack -iwad DOOM2.WAD          # smack.wad (the port's PWAD) is symlinked here
+cd run && ./smack -iwad doom1.wad -warp 1  # shareware IWAD, jump to MAP01
 ```
 
 An IWAD (`DOOM.WAD`, `DOOM2.WAD`, `doom1.wad`) is required on first run. See
 `run/README.txt` for the full flag list. Useful environment/config knobs:
 
-- Rendering is always hi-res 640x400 (`hires=1` in `linux/i_video.c`; lowres support and its video-mode menu toggle have been removed, though the renderer still keys off `SCREENWIDTH<<hires`). `SMMU_SCALE=N` magnifies the window on top of the framebuffer (default 1 → a 640x400 window).
+- Rendering is always hi-res 640x400 (`hires=1` in `linux/i_video.c`; lowres support and its video-mode menu toggle have been removed, though the renderer still keys off `SCREENWIDTH<<hires`). `SMACK_SCALE=N` magnifies the window on top of the framebuffer (default 1 → a 640x400 window).
 - The HUD is driven by one `screensize` control (cvar `screensize`, range 0–11; the menu "screen size" slider). 0–7 = windowed 3D view + status bar; **8 = fullscreen + classic text overlay**, **9 = fullscreen + GZDoom-style graphical HUD**, **10 = the same HUD at 50%**, **11 = the vanilla status bar scaled to 50%, centred (aidoom-style, `ST_DrawScaled` in `st_stuff.c`)**. Blocks ≥ 11 are all clamped to fullscreen view in `R_ExecuteSetViewSize` (the single clamp point — every `R_SetViewSize(screenSize+3)` call site relies on it). The graphical HUD is `HU_DrawFullHUD` in `hu_over.c` (dispatched from `HU_OverlayDraw` on `screenSize`); its 50% variant reuses the full-size draw code but swaps `V_DrawPatch` (2× hires) for `V_DrawPatchUnscaled` (1× native). `hud_overlaystyle`/cvar `hu_overlay` (HUD settings → "display type") now only selects the text-overlay styles 0–3 used at screensize 8.
 - Options → **key bindings** opens `menu_keybindings` (`mn_menus.c`), built at startup by `MN_InitKeyBindings`. Selecting a row runs `mn_bindkey N`, which installs `binding_widget` (a `menuwidget_t` capture prompt); the next keypress is written to the corresponding `key_*` variable (ESC cancels). The menu engine has no dedicated key-binding item type, so this is done with the `current_menuwidget` mechanism (same pattern as `mn_misc.c`'s `popup_widget`).
 - **Textured automap:** `AM_drawFlats` in `am_map.c` (cvar `automap_textured`, default on; menu: Options → automap → "textured display") fills each explored subsector's floor area with its floor flat, light-shaded — sampling per pixel over BLK×BLK blocks (one `R_PointInSubsector` BSP descent per block). Uses `firstflat + flattranslation[pic]` for the flat lump and `colormaps[0] + cm*256` for shading. Cvar registered in `am_color.c`, config default in `m_misc.c` (persists).
-- **Config persistence:** all console/config variables (screensize, HUD, key bindings, automap options, gamma, volumes, …) are written to `~/.smmu/smmu.cfg` on clean exit via `M_SaveDefaults`, called from `I_Quit` (atexit). The **window size is NOT persisted** — it derives from `SMMU_SCALE` each launch (`win_w`/`win_h` in `linux/i_video.c` aren't config vars).
+- **Config persistence:** all console/config variables (screensize, HUD, key bindings, automap options, gamma, volumes, …) are written to `run (next to the binary)/smack.cfg` on clean exit via `M_SaveDefaults`, called from `I_Quit` (atexit). The **window size is NOT persisted** — it derives from `SMACK_SCALE` each launch (`win_w`/`win_h` in `linux/i_video.c` aren't config vars).
 - **Palette note:** `I_SetPalette` (`linux/i_video.c`) must NOT shift gamma values `>> 2` — that was for the VGA 6-bit DAC and makes SDL's 8-bit output ¼ brightness (the "everything is dark" bug). It writes full 0–255 values.
 - `SDL_VIDEODRIVER=dummy` / `SDL_AUDIODRIVER=dummy` — headless smoke tests; `-nodraw`/`-nosound`/`-nomusic` do the same at the game level.
-- User config and saves live in `~/.smmu/` (`smmu.cfg`, `savegames/`).
+- User config and saves live in `run (next to the binary)/` (`smack.cfg`, `savegames/`).
 
 Sound is fully implemented. SFX: `linux/i_sound.c` mixes Doom's 8-bit DMX lumps into a 16-bit stereo SDL3 stream via a pull callback (`snd_card` set on init). Music: authentic **OPL3 synthesis** — Nuked-OPL3 (`opl3.c`) + a GENMIDI voice player (`i_opl.c`) + a MUS/MIDI sequencer (`i_mus.c`), rendered into the same audio callback and mixed over the SFX. `I_InitMusic` (called from `S_Init`) loads the IWAD `GENMIDI` and sets `mus_card`. See `docs/LEGACY_FIXES.md` §3/§10.
 

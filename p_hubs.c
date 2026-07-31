@@ -50,7 +50,7 @@ char *temp_hubfile()
 
   new_tmpfilename = malloc(10);
 
-  sprintf(new_tmpfilename, "smmu%i.tmp", tmpfilenum++);
+  sprintf(new_tmpfilename, "smack%i.tmp", tmpfilenum++);
 
   return new_tmpfilename;  
 }
@@ -126,7 +126,7 @@ static void SaveHubLevel()
   if(!hublevel->tmpfile)
     hublevel->tmpfile = temp_hubfile();
 
-  G_SaveCurrentLevel(hublevel->tmpfile, "smmu hubs");
+  G_SaveCurrentLevel(hublevel->tmpfile, "smack hubs");
 }
 
 static void LoadHubLevel(char *levelname)

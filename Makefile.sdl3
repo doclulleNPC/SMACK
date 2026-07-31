@@ -134,7 +134,7 @@ OBJS = \
 	$(O)/version.o     \
 	$(O)/dogs.o
 
-EXE = $(O)/smmu
+EXE = $(O)/smack
 
 # runtime image: the binary and everything needed to launch SMMU live here
 RUNDIR = run
@@ -145,11 +145,11 @@ $(EXE): $(OBJS)
 	$(CC) $(OBJS) -o $@ $(LDFLAGS) $(LIBS_COMMON)
 
 # copy the freshly built binary and its data into the run/ directory so
-# `cd run && ./smmu -iwad ...` always uses the latest build
+# `cd run && ./smack -iwad ...` always uses the latest build
 run: $(EXE)
 	mkdir -p $(RUNDIR)
-	cp -f $(EXE) $(RUNDIR)/smmu
-	ln -sf ../smmu.wad $(RUNDIR)/smmu.wad
+	cp -f $(EXE) $(RUNDIR)/smack
+	ln -sf ../smack.wad $(RUNDIR)/smack.wad
 
 $(O)/%.o: %.c | $(O)
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@

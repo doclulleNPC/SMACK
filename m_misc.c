@@ -2340,7 +2340,7 @@ void M_ScreenShot (void)
       do
 	sprintf(lbmname,                         //jff 3/30/98 pcx or bmp?
                         // sf: changed to smmu from doom
-                screenshot_pcx ? "smmu%02d.pcx" : "smmu%02d.bmp", shot++);
+                screenshot_pcx ? "smack%02d.pcx" : "smack%02d.bmp", shot++);
       while (!access(lbmname,0) && --tries);
 
       if (tries)

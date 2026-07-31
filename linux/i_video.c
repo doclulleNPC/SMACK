@@ -68,7 +68,7 @@ static int           pitch_pixels = 0;
 static int           win_w = 1280;
 static int           win_h = 800;
 static int           scale = 1;     // window magnification applied on top of
-                                   // the render framebuffer. SMMU_SCALE=N sets
+                                   // the render framebuffer. SMACK_SCALE=N sets
                                    // it (default 1). With hires the framebuffer
                                    // is already 640x400, so scale=1 -> 640x400.
 static int           hires_flag = 0;
@@ -371,7 +371,7 @@ static void I_CreateWindowAndRenderer(void)
   // The render framebuffer is SCREENWIDTH<<hires x SCREENHEIGHT<<hires
   // (640x400 in the default hi-res mode) and is nearest-neighbour stretched to
   // the window. Window size comes from (in order of precedence): -geom WxH, the
-  // -2/-3/-4 scale flags, the SMMU_SCALE env var, else 1x (a 640x400 window).
+  // -2/-3/-4 scale flags, the SMACK_SCALE env var, else 1x (a 640x400 window).
   int p;
 
   hires_flag = hires;
@@ -379,11 +379,11 @@ static void I_CreateWindowAndRenderer(void)
   fb_h = SCREENHEIGHT << hires;
 
   scale = 1;
-  const char *env_scale = getenv("SMMU_SCALE");
+  const char *env_scale = getenv("SMACK_SCALE");
   if (env_scale && atoi(env_scale) >= 1)
     scale = atoi(env_scale);
 
-  // command-line scale shortcuts override SMMU_SCALE
+  // command-line scale shortcuts override SMACK_SCALE
   if      (M_CheckParm("-4")) scale = 4;
   else if (M_CheckParm("-3")) scale = 3;
   else if (M_CheckParm("-2")) scale = 2;
@@ -471,7 +471,7 @@ void I_ResetScreen(void)
 void I_InitGraphicsMode(void)
 {
   // Rendering is always hi-res (640x400); lowres support has been removed.
-  // SMMU_SCALE=N magnifies the window on top of the render framebuffer;
+  // SMACK_SCALE=N magnifies the window on top of the render framebuffer;
   // I_CreateWindowAndRenderer() reads it and computes win_w/win_h.
   hires_flag = hires;
 

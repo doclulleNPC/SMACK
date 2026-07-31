@@ -30,7 +30,7 @@ kept only for reference. `Makefile.sdl3` is the live Linux/SDL3 build.
 | **From-scratch build fails: `multiple definition of demo_insurance / weapon_recoil / …`** | 1999-era **tentative-definition globals** (`int demo_insurance;` with no `extern`, in several `.c` files). Modern gcc defaults to `-fno-common`, which makes these a link error. (Incremental builds masked it by reusing `.o` files compiled elsewhere; `make clean` exposes it.) | `-fcommon` | `Makefile.sdl3` |
 | Latent `-O2` miscompiles | the engine type-puns constantly (comparing 4-char lump names as ints, etc.); default strict aliasing lets `-O2` reorder those wrongly. SMMU happens to avoid the exact classic pun (it uses `strncasecmp`/byte-XOR for names), but the risk is real | `-fno-strict-aliasing` (mandatory for the whole DOOM family) | `Makefile.sdl3` |
 | Editing a `.h` didn't recompile the `.c` files that include it → stale objects, confusing behaviour | the make rules tracked **no header dependencies** | `-MMD -MP` per compile + `-include $(OBJS:.o=.d)` | `Makefile.sdl3` |
-| Running `./smmu` used a stale binary | nothing copied the freshly built exe next to its WADs | `all: $(EXE) run`; the `run` target copies the binary and refreshes the `run/smmu.wad` symlink every build | `Makefile.sdl3` |
+| Running `./smack` used a stale binary | nothing copied the freshly built exe next to its WADs | `all: $(EXE) run`; the `run` target copies the binary and refreshes the `run/smack.wad` symlink every build | `Makefile.sdl3` |
 
 The binary resolves its data dir from `argv[0]` (`D_DoomExeDir`), so it must sit
 beside its WADs — hence the `run/` runtime image.
@@ -61,7 +61,7 @@ backend is reimplemented on SDL3.
 
 - **Video** (`i_video.c`): the 8-bit palettised DOOM framebuffer is converted to an
   RGBA8888 streaming texture and stretched to the window with nearest-neighbour
-  sampling. `SMMU_SCALE=N` magnifies the window.
+  sampling. `SMACK_SCALE=N` magnifies the window.
 - **SFX** (`i_sound.c`): originally silent stubs. Now a real software mixer — parses
   DOOM's 8-bit DMX sound lumps, resamples to 44.1 kHz, applies pitch and the classic
   x² stereo pan law, mixes up to 128 voices into an SDL3 audio stream via a pull
@@ -320,9 +320,9 @@ steady on long ones.
 
 All console/config variables (screen size, HUD style, key bindings, automap options
 including the textured toggle, gamma, sound/music volume, …) are written to
-`~/.smmu/smmu.cfg` on clean exit via `M_SaveDefaults` (called from `I_Quit`, an
+`run (next to the binary)/smack.cfg` on clean exit via `M_SaveDefaults` (called from `I_Quit`, an
 `atexit` handler). **The window size is NOT persisted** — it derives from
-`SMMU_SCALE` each launch.
+`SMACK_SCALE` each launch.
 
 ---
 

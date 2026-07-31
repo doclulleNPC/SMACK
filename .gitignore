@@ -6,8 +6,10 @@ objdebug/
 *.exe
 
 # Runtime binaries / symlinks produced by the `run` target
+run/smack
 run/smmu
 run/smmu_release
+run/smack.wad
 run/smmu.wad
 
 # Copyrighted id Software IWADs — never commit (user supplies these)

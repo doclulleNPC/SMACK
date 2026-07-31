@@ -1270,9 +1270,9 @@ static void error_printf(char *s, ...)
   {
      time_t nowtime = time(NULL);
 
-     error_filename = "smmu_err.txt";
+     error_filename = "smack_err.txt";
      error_file = fopen(error_filename, "w");
-     fprintf(error_file, "SMMU textures error file\n%s\n",
+     fprintf(error_file, "SMACK textures error file\n%s\n",
         ctime(&nowtime));
   }
 
