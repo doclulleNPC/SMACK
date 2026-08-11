@@ -35,7 +35,24 @@ typedef enum {false, true} boolean;
 typedef unsigned char byte;
 #endif
 
-#include <values.h>
+// This used to be #include <values.h>, a legacy SVR4/glibc header that neither
+// mingw-w64 nor Cygwin ships. The engine only ever uses MAXINT / MININT /
+// MAXSHORT out of it, and glibc's values.h defines those from <limits.h>
+// anyway, so derive them here instead: same constants everywhere, no
+// platform conditional, and the playsim is unaffected.
+#include <limits.h>
+#ifndef MAXINT
+#define MAXINT          INT_MAX
+#endif
+#ifndef MININT
+#define MININT          INT_MIN
+#endif
+#ifndef MAXSHORT
+#define MAXSHORT        SHRT_MAX
+#endif
+#ifndef MINSHORT
+#define MINSHORT        SHRT_MIN
+#endif
 #define MAXCHAR         ((char)0x7f)
 #define MINCHAR         ((char)0x80)
 #endif

@@ -32,6 +32,11 @@ static const char rcsid[] = "$Id: d_main.c,v 1.47 1998/05/16 09:16:51 killough E
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#if defined(_WIN32) && !defined(__CYGWIN__)
+#include <direct.h>         // _mkdir — the CRT's mkdir takes no mode argument
+#define mkdir(path, mode) _mkdir(path)
+#endif
+
 #include "doomdef.h"
 #include "doomstat.h"
 #include "dstrings.h"

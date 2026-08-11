@@ -29,6 +29,8 @@ See [`docs/CHANGES.md`](docs/CHANGES.md) for the full summary and
 
 ## Building
 
+### Linux
+
 Requires `gcc`, `pkg-config`, and SDL3 development libraries.
 
 ```sh
@@ -36,6 +38,21 @@ make -f Makefile.sdl3          # release build -> obj/smack, copied into run/
 make -f Makefile.sdl3 debug    # debug build
 make -f Makefile.sdl3 clean
 ```
+
+### Windows (x64)
+
+Requires a mingw-w64 gcc and an SDL3 SDK (the MSVC `SDL3-devel-VC` package works
+— the build links straight against `SDL3.dll`). Produces a native `.exe` with no
+Cygwin/MSYS runtime dependency.
+
+```sh
+make -f Makefile.mingw                                   # -> obj-win/smack.exe, copied into run-win/
+make -f Makefile.mingw CC=x86_64-w64-mingw32-gcc SDL3_DIR=C:/SDL3
+make -f Makefile.mingw clean
+```
+
+`run-win/` gets `smack.exe`, `SDL3.dll` and `smack.wad`; keep them together and
+drop your IWAD in beside them.
 
 ## Running
 

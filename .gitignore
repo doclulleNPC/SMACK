@@ -28,3 +28,8 @@ run/smmutest.wad
 *.cfg
 tranmap.dat
 run/tranmap.dat
+
+# Windows (mingw-w64) build output — see Makefile.mingw
+obj-win/
+objdebug-win/
+run-win/

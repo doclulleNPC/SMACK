@@ -1,0 +1,199 @@
+############################################################################
+# SMACK! — native Windows (x64) build
+#
+# Produces a real Win64 .exe with no Cygwin/MSYS runtime dependency, using a
+# mingw-w64 cross/native compiler and the SDL3 SDK.
+#
+# Toolchain (override on the command line if yours differs):
+#   CC       — mingw-w64 gcc. The Cygwin-hosted cross compiler
+#              (x86_64-w64-mingw32-gcc) and a native MSYS2 mingw64 gcc both work.
+#   SDL3_DIR — root of an SDL3 SDK containing include/SDL3/*.h and
+#              lib/x64/SDL3.dll. The MSVC ("SDL3-devel-VC") package is fine:
+#              we link straight against the DLL, so its MSVC .lib is unused.
+#
+#   make -f Makefile.mingw CC=x86_64-w64-mingw32-gcc SDL3_DIR=C:/SDL3
+#
+# NOTE: pass SDL3_DIR as a *Windows-style* path (C:/...). This makefile is
+# usually driven from an MSYS/Git-Bash shell while the compiler is a Cygwin
+# program, and the two disagree about what /c/... means; Windows-style paths
+# with forward slashes are understood by both.
+############################################################################
+
+MODE    = RELEASE
+O       = $(O_$(MODE))
+O_RELEASE = obj-win
+O_DEBUG   = objdebug-win
+
+# plain '=' rather than '?=': make defines a built-in CC (cc), which would win
+# against '?='. A command-line CC=... still overrides this.
+CC       = x86_64-w64-mingw32-gcc
+RM       = rm -f
+
+# SDL3 SDK location and architecture
+SDL3_DIR  ?= C:/Source/SDL3
+SDL3_ARCH ?= x64
+SDL3_DLL   = $(SDL3_DIR)/lib/$(SDL3_ARCH)/SDL3.dll
+SDL_CFLAGS = -I$(SDL3_DIR)/include
+# Link directly against the DLL: GNU ld synthesizes the import stubs, so no
+# mingw import library (libSDL3.dll.a) or MSVC .lib is required.
+SDL_LIBS   = $(SDL3_DLL)
+
+# Same load-bearing flags as the Linux build (see Makefile.sdl3 / docs/LEGACY_FIXES.md §2):
+# -fcommon for the 1999 tentative-definition globals, -fno-strict-aliasing
+# because the engine type-puns and -O2 miscompiles it otherwise.
+#
+# Windows-specific:
+#   -D_USE_MATH_DEFINES  M_PI etc. from math.h
+#   -DWIN32_LEAN_AND_MEAN trims windows.h where it gets pulled in
+#   -mconsole             keep the console attached — the engine prints its
+#                         startup banner and I_Error text to stdout/stderr
+CFLAGS_COMMON  = -Wall -g -I. $(SDL_CFLAGS) -DSDL3 -DDOGS \
+                 -fno-strict-aliasing -fcommon \
+                 -D_USE_MATH_DEFINES -DWIN32_LEAN_AND_MEAN \
+                 -Wno-int-conversion -Wno-incompatible-pointer-types \
+                 -Wno-discarded-qualifiers -Wno-format
+CFLAGS_DEBUG   = -O0 -g -DRANGECHECK -DINSTRUMENTED
+CFLAGS_RELEASE = -O2
+
+DEPFLAGS       = -MMD -MP
+
+LIBS_COMMON    = $(SDL_LIBS) -lm -lwinmm
+LDFLAGS_COMMON = -mconsole
+
+CFLAGS  = $(CFLAGS_COMMON) $(CFLAGS_$(MODE))
+LDFLAGS = $(LDFLAGS_COMMON)
+
+# system-specific object files (the SDL3 backend in linux/ is portable;
+# the Windows-specific bits are #ifdef _WIN32 guards inside those files)
+PLATOBJS = \
+	$(O)/i_main.o      \
+	$(O)/i_system.o    \
+	$(O)/i_video.o     \
+	$(O)/i_sound.o     \
+	$(O)/i_net.o
+
+OBJS = \
+	$(PLATOBJS)        \
+	$(O)/p_info.o      \
+	$(O)/c_cmd.o       \
+	$(O)/c_io.o        \
+	$(O)/c_runcmd.o    \
+	$(O)/c_net.o       \
+	$(O)/doomdef.o     \
+	$(O)/doomstat.o    \
+	$(O)/dstrings.o    \
+	$(O)/tables.o      \
+	$(O)/f_finale.o    \
+	$(O)/f_wipe.o      \
+	$(O)/d_main.o      \
+	$(O)/d_net.o       \
+	$(O)/d_items.o     \
+	$(O)/g_game.o      \
+	$(O)/g_cmd.o       \
+	$(O)/mn_menus.o    \
+	$(O)/mn_misc.o     \
+	$(O)/mn_engin.o    \
+	$(O)/m_misc.o      \
+	$(O)/m_argv.o      \
+	$(O)/m_bbox.o      \
+	$(O)/m_cheat.o     \
+	$(O)/m_random.o    \
+	$(O)/am_map.o      \
+	$(O)/am_color.o    \
+	$(O)/p_ceilng.o    \
+	$(O)/p_chase.o     \
+	$(O)/p_cmd.o       \
+	$(O)/p_doors.o     \
+	$(O)/p_enemy.o     \
+	$(O)/p_floor.o     \
+	$(O)/p_hubs.o      \
+	$(O)/p_inter.o     \
+	$(O)/p_lights.o    \
+	$(O)/p_map.o       \
+	$(O)/p_maputl.o    \
+	$(O)/p_plats.o     \
+	$(O)/p_pspr.o      \
+	$(O)/p_setup.o     \
+	$(O)/p_sight.o     \
+	$(O)/p_skin.o      \
+	$(O)/p_spec.o      \
+	$(O)/p_switch.o    \
+	$(O)/p_mobj.o      \
+	$(O)/p_telept.o    \
+	$(O)/p_tick.o      \
+	$(O)/p_saveg.o     \
+	$(O)/p_user.o      \
+	$(O)/r_bsp.o       \
+	$(O)/r_data.o      \
+	$(O)/r_draw.o      \
+	$(O)/r_main.o      \
+	$(O)/r_plane.o     \
+	$(O)/r_segs.o      \
+	$(O)/r_ripple.o    \
+	$(O)/r_sky.o       \
+	$(O)/r_things.o    \
+	$(O)/w_wad.o       \
+	$(O)/wi_stuff.o    \
+	$(O)/v_video.o     \
+	$(O)/v_misc.o      \
+	$(O)/st_lib.o      \
+	$(O)/st_stuff.o    \
+	$(O)/hu_stuff.o    \
+	$(O)/hu_over.o     \
+	$(O)/hu_frags.o    \
+	$(O)/s_sound.o     \
+	$(O)/z_zone.o      \
+	$(O)/info.o        \
+	$(O)/sounds.o      \
+	$(O)/p_genlin.o    \
+	$(O)/d_deh.o       \
+	$(O)/t_script.o    \
+	$(O)/t_parse.o     \
+	$(O)/t_prepro.o    \
+	$(O)/t_vari.o      \
+	$(O)/t_func.o      \
+	$(O)/t_oper.o      \
+	$(O)/t_spec.o      \
+	$(O)/opl3.o        \
+	$(O)/i_opl.o       \
+	$(O)/i_mus.o       \
+	$(O)/version.o     \
+	$(O)/dogs.o
+
+EXE = $(O)/smack.exe
+
+# runtime image: the .exe, SDL3.dll and smack.wad must sit together, because
+# D_DoomExeDir() derives the data directory from argv[0].
+RUNDIR = run-win
+
+all: $(EXE) run
+
+$(EXE): $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS) $(LIBS_COMMON)
+
+# Windows has no dependable symlinks for this purpose, so the runtime image is
+# populated by copying.
+run: $(EXE)
+	mkdir -p $(RUNDIR)
+	cp -f $(EXE) $(RUNDIR)/smack.exe
+	cp -f $(SDL3_DLL) $(RUNDIR)/SDL3.dll
+	cp -f smack.wad $(RUNDIR)/smack.wad
+
+$(O)/%.o: %.c | $(O)
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
+
+$(O)/%.o: linux/%.c | $(O)
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
+
+$(O):
+	mkdir -p $(O)
+
+debug:
+	$(MAKE) -f Makefile.mingw MODE=DEBUG
+
+clean:
+	$(RM) -r $(O_RELEASE) $(O_DEBUG)
+
+.PHONY: all run debug clean
+
+-include $(OBJS:.o=.d)

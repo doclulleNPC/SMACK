@@ -25,7 +25,7 @@
 
 #include "z_zone.h"         // killough 1/18/98
 
-#include <values.h>
+#include "doomtype.h"       // MAXINT/MININT — portable stand-in for <values.h>
 #include "m_fixed.h"
 
 // Bounding box coordinate storage.
