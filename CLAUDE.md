@@ -4,12 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-SMMU ("Smack My Marine Up") version 3.21, a 1999 MBF-based Doom source port by
-Simon Howard ("Fraggle"). The C source in the repository root is the original
-DOS/DJGPP codebase; the active work here is **modernizing it to build and run on
-64-bit Linux with an SDL3 backend**. Beyond stock Doom it adds Boom + MBF
-features, hub levels, player skins, an in-game console, and **FraggleScript** (a
-level-scripting language, the `t_*.c` files).
+**SMACK!** — a fork of SMMU 3.21 ("Smack My Marine Up"), the 1999 MBF-based Doom
+source port by Simon Howard ("Fraggle"). The C source in the repository root is
+the original DOS/DJGPP codebase; the active work here is **modernizing it to
+build and run on 64-bit Linux with an SDL3 backend**, plus sound/music and
+renderer fixes. Beyond stock Doom it carries Boom + MBF features, hub levels,
+player skins, an in-game console, and **FraggleScript** (a level-scripting
+language, the `t_*.c` files).
+
+The binary, its PWAD, and its config are all named `smack` (`smack.wad`,
+`smack.cfg`) — the rename from `smmu` is complete, but much prose in
+`docs/`, `changes.txt`, and the `smmu*.txt` files still says "SMMU". Read
+`README.md` for the user-facing summary.
+
+Three docs are worth knowing (all under `docs/`):
+- **`LEGACY_FIXES.md`** — source-backed log of every portability/modernization
+  fix (symptom → root cause → fix → files), plus an audit of what SMMU already
+  inherits from MBF. Check here before "fixing" something legacy-looking.
+- **`CHANGES.md`** — feature-level summary of everything done since the 1999 tree.
+- **`PARAMETERS.md`** — the authoritative command-line reference, enumerated from
+  the `M_CheckParm` calls in the source.
 
 ## Building
 
@@ -17,20 +31,70 @@ The modern build uses `Makefile.sdl3` (NOT the root `makefile`, which is the
 original DJGPP/DOS build and is kept only for reference):
 
 ```bash
-make -f Makefile.sdl3          # release build -> obj/smack
+make -f Makefile.sdl3          # release build -> obj/smack, then copied into run/
 make -f Makefile.sdl3 debug    # debug build (-O0 -DRANGECHECK -DINSTRUMENTED) -> objdebug/smack
 make -f Makefile.sdl3 clean     # remove obj/ and objdebug/
 ```
 
 Requires `gcc`, `pkg-config`, and SDL3 dev libs (`pkg-config sdl3` must resolve).
-There is no test suite and no linter — verification is compile + run.
+There is no test suite and no linter — verification is compile + run. **Check
+`pkg-config --exists sdl3` before promising a build**: this checkout is sometimes
+mounted on a machine without SDL3 (e.g. a Windows/MSYS host), where the build
+cannot be run at all and edits must be verified by reading.
+
+The default target is `all: $(EXE) run` — every build also **copies the binary to
+`run/smack` and symlinks `run/smack.wad`**. `debug` just re-invokes `all` with
+`MODE=DEBUG`, so *a debug build overwrites `run/smack` with the debug binary*;
+re-run the release build to put the optimized one back. Everything in `run/`
+except `README.txt` and `smmu.bat` is generated or user-supplied and gitignored
+(binary, WAD symlinks, IWADs, `*.cfg`).
 
 `Makefile.sdl3` carries two load-bearing flags: **`-fcommon`** (the 1999 source has
 tentative-definition globals that modern gcc's `-fno-common` rejects on a from-scratch
 link) and **`-fno-strict-aliasing`** (the engine type-puns; `-O2` miscompiles it
 otherwise). It also uses `-MMD -MP` for header dependencies, so editing a `.h`
-recompiles its dependents. **`docs/LEGACY_FIXES.md`** is the full source-backed log of
-portability/modernization fixes and an audit of what SMMU already carries from MBF.
+recompiles its dependents.
+
+New `.c` files must be added to `OBJS` by hand — there is no wildcard. Root-level
+and `linux/` sources share one object directory via two pattern rules, so a
+basename may not be used twice across those directories. **`Makefile.sdl3` and
+`Makefile.mingw` each carry their own copy of `OBJS`** — add new sources to both.
+
+### Windows build
+
+`Makefile.mingw` produces a native Win64 `.exe` (no Cygwin/MSYS runtime
+dependency) from the same sources:
+
+```bash
+make -f Makefile.mingw          # -> obj-win/smack.exe, copied into run-win/
+make -f Makefile.mingw debug    # -> objdebug-win/smack.exe
+make -f Makefile.mingw clean
+```
+
+It needs a mingw-w64 gcc and an SDL3 SDK, both overridable:
+`make -f Makefile.mingw CC=x86_64-w64-mingw32-gcc SDL3_DIR=C:/Source/SDL3`.
+The **MSVC** SDL3 package (`SDL3-devel-VC`) is fine — the link is made directly
+against `lib/x64/SDL3.dll`, so GNU ld synthesizes the import stubs and no
+mingw import library is needed. Pass `SDL3_DIR` as a Windows-style path
+(`C:/...`): the build is usually driven from MSYS/Git-Bash while the compiler is
+a Cygwin program, and the two disagree about what `/c/...` means.
+
+`run-win/` is the Windows runtime image (`smack.exe` + `SDL3.dll` +
+`smack.wad`); it is populated by copying rather than symlinking. All three files
+must sit together because `D_DoomExeDir()` derives the data directory from
+`argv[0]`.
+
+Windows-specific gotchas when testing:
+- **`timeout N ./smack.exe` does not kill it.** Cygwin's `timeout` sends SIGTERM,
+  which a native Windows process ignores; `timeout` reports 124 while the game
+  keeps running. Use `Stop-Process -Name smack -Force`, and check for strays
+  before trusting an observation.
+- **Redirected stdout is block-buffered**, so a log that appears to stop at
+  `D_SetGraphicsMode` usually means the game is running fine with the rest of the
+  banner still in the buffer — confirm with `Get-Process smack` (window title,
+  CPU) rather than by reading the log.
+- The SDL **dummy video driver** is not a good smoke test here; prefer inspecting
+  the real window.
 
 Key compile flags (see `Makefile.sdl3`): `-DSDL3` selects the SDL backend,
 `-DDOGS` enables the helper-dogs feature, and several `-Wno-*` flags suppress
@@ -43,14 +107,16 @@ The binary resolves its data directory from `argv[0]` via `D_DoomExeDir()`, so
 it must run alongside its WADs. Use the prepared `run/` directory:
 
 ```bash
-cd run && ./smack -iwad DOOM2.WAD          # smack.wad (the port's PWAD) is symlinked here
-cd run && ./smack -iwad doom1.wad -warp 1  # shareware IWAD, jump to MAP01
+cd run && ./smack -iwad DOOM2.WAD             # smack.wad (the port's PWAD) is symlinked here by the build
+cd run && ./smack -iwad doom1.wad -warp 1     # shareware IWAD, jump to MAP01
+cd run && ./smack -iwad DOOM2.WAD -file X.wad # load a PWAD — the flag is -file; there is no -wad
 ```
 
-An IWAD (`DOOM.WAD`, `DOOM2.WAD`, `doom1.wad`) is required on first run. See
-`run/README.txt` for the full flag list. Useful environment/config knobs:
+An IWAD (`DOOM.WAD`, `DOOM2.WAD`, `doom1.wad`) is required on first run; none is
+committed (id copyright). `docs/PARAMETERS.md` is the full flag list;
+`run/README.txt` is the shorter user-facing version. Useful environment/config knobs:
 
-- Rendering is always hi-res 640x400 (`hires=1` in `linux/i_video.c`; lowres support and its video-mode menu toggle have been removed, though the renderer still keys off `SCREENWIDTH<<hires`). `SMACK_SCALE=N` magnifies the window on top of the framebuffer (default 1 → a 640x400 window).
+- Rendering is always hi-res 640x400 (`hires=1` in `linux/i_video.c`; lowres support and its video-mode menu toggle have been removed, though the renderer still keys off `SCREENWIDTH<<hires`). Window size is decided at startup in `linux/i_video.c` by, in order of precedence, **`-geom WxH` → `-4`/`-3`/`-2` → `SMACK_SCALE=N` → 1x** (a 640x400 window); the scale magnifies the window on top of the fixed render framebuffer.
 - The HUD is driven by one `screensize` control (cvar `screensize`, range 0–11; the menu "screen size" slider). 0–7 = windowed 3D view + status bar; **8 = fullscreen + classic text overlay**, **9 = fullscreen + GZDoom-style graphical HUD**, **10 = the same HUD at 50%**, **11 = the vanilla status bar scaled to 50%, centred (aidoom-style, `ST_DrawScaled` in `st_stuff.c`)**. Blocks ≥ 11 are all clamped to fullscreen view in `R_ExecuteSetViewSize` (the single clamp point — every `R_SetViewSize(screenSize+3)` call site relies on it). The graphical HUD is `HU_DrawFullHUD` in `hu_over.c` (dispatched from `HU_OverlayDraw` on `screenSize`); its 50% variant reuses the full-size draw code but swaps `V_DrawPatch` (2× hires) for `V_DrawPatchUnscaled` (1× native). `hud_overlaystyle`/cvar `hu_overlay` (HUD settings → "display type") now only selects the text-overlay styles 0–3 used at screensize 8.
 - Options → **key bindings** opens `menu_keybindings` (`mn_menus.c`), built at startup by `MN_InitKeyBindings`. Selecting a row runs `mn_bindkey N`, which installs `binding_widget` (a `menuwidget_t` capture prompt); the next keypress is written to the corresponding `key_*` variable (ESC cancels). The menu engine has no dedicated key-binding item type, so this is done with the `current_menuwidget` mechanism (same pattern as `mn_misc.c`'s `popup_widget`).
 - **Textured automap:** `AM_drawFlats` in `am_map.c` (cvar `automap_textured`, default on; menu: Options → automap → "textured display") fills each explored subsector's floor area with its floor flat, light-shaded — sampling per pixel over BLK×BLK blocks (one `R_PointInSubsector` BSP descent per block). Uses `firstflat + flattranslation[pic]` for the flat lump and `colormaps[0] + cm*256` for shading. Cvar registered in `am_color.c`, config default in `m_misc.c` (persists).
@@ -97,7 +163,20 @@ prefixes; learn the prefixes and the codebase becomes navigable:
   (calls into `i_sound`), **`w_wad` — WAD file loading**, **`z_zone` — the zone
   memory allocator** that nearly everything allocates through.
 - **`c_*` — the in-game console** (`c_io`, `c_runcmd`, `c_cmd`, `c_net`); backtick
-  opens it. Console variables/commands are registered across many subsystems.
+  opens it. Console variables/commands are registered across many subsystems —
+  see the recipe below. Several subsystems keep their console commands in a
+  dedicated file: `g_cmd.c`, `p_cmd.c`, `am_color.c`.
+- **`p_info.c` — level info.** SMMU stores per-level metadata (level name, music
+  lump, par time, sky, FraggleScript source) *inside the map marker lump*
+  (`MAPxx`/`ExMx`), parsed here. This is the MapInfo equivalent and is what ties
+  FraggleScript to a level.
+- **`opl3.c`/`opl3.h`/`wf_rom.h` are vendored third-party code** (Nuked-OPL3 /
+  Nuked-OPL3-fast, LGPL-2.1+) — keep them close to upstream rather than
+  restyling them to match the 1999 sources. `i_opl.c` (GENMIDI voice player) and
+  `i_mus.c` (MUS/MIDI sequencer) are this fork's own glue and live in the root
+  rather than `linux/` because they are platform-agnostic.
+- **`r_ripple.c`** — Simon Howard's Quake-style flat warping, used for swirling
+  liquid flats.
 - **`t_*` — FraggleScript.** `t_script` (script objects), `t_parse`/`t_prepro`
   (parser/preprocessor), `t_func` (built-in functions), `t_oper`, `t_vari`,
   `t_spec`. See `fs_funcs.txt` for the function reference.
@@ -106,6 +185,19 @@ prefixes; learn the prefixes and the codebase becomes navigable:
 
 ### Cross-cutting things to know
 
+- **Adding a console variable (the standard three-step).** Most user-facing
+  settings in this fork are cvars, and each one touches three files:
+  1. In the owning subsystem's `.c`, declare the backing global, then use the
+     `VARIABLE_*` / `CONSOLE_VARIABLE` (or `CONSOLE_COMMAND`, `CONSOLE_NETVAR`)
+     macros from `c_runcmd.h` to build the `variable_t`/`command_t`.
+  2. Register it with `C_AddCommand(name)` inside that subsystem's
+     `X_AddCommands()` — every one of those is called from `C_AddCommands()` in
+     `c_cmd.c` (`Cheat_`, `G_`, `HU_`, `I_`, `net_`, `P_`, `R_`, `S_`, `ST_`,
+     `T_`, `V_`, `MN_`, `AM_`). A cvar not registered there simply doesn't exist.
+  3. For persistence, add a `default_t` entry to `defaults[]` in `m_misc.c`
+     (name, pointer, default, range, type, screen-size class, wad-allowed flag,
+     help string). Without it the setting resets every launch.
+  Menu exposure is separate again — `mn_menus.c` items reference the cvar by name.
 - **Demo/netgame determinism:** the playsim must be bit-for-bit reproducible.
   Anything that affects game state must go through `m_random.c`'s RNG and
   fixed-point math (`m_fixed.h`, `tables.c`), never `rand()` or floats. Renderer
@@ -113,7 +205,21 @@ prefixes; learn the prefixes and the codebase becomes navigable:
 - **Zone allocator:** prefer `Z_Malloc`/`Z_Free` (`z_zone.h`) with the right tag
   over raw `malloc`; tagged blocks (e.g. `PU_LEVEL`) are freed en masse on level
   change. Crash handlers dump zone history (`Z_DumpHistory`).
-- **`Z_ZONE.C`/`Z_ZONE.H`** are uppercase files with lowercase `z_zone.c`/`.h`
-  symlinks (a DOS-filename artifact); edit through either name.
+- **`z_zone.c`/`z_zone.h` are now ordinary lowercase files.** They used to be
+  uppercase `Z_ZONE.C`/`Z_ZONE.H` plus lowercase symlinks (a DOS-filename
+  artifact). That layout cannot be checked out on a case-insensitive filesystem:
+  `z_zone.c` and `Z_ZONE.C` are one directory entry there, so the symlink pointed
+  at itself and the source vanished from the working tree ("Too many levels of
+  symbolic links"). Nothing ever included the uppercase spelling, so the pair was
+  normalized to lowercase — do not reintroduce the symlinks.
+- **Platform-portability edits: prefer a portable formulation over a platform
+  `#ifdef`.** `doomtype.h` no longer includes `<values.h>` (absent on both
+  mingw-w64 and Cygwin) — `MAXINT`/`MININT`/`MAXSHORT` come from `<limits.h>`
+  unconditionally, with the same values glibc's `values.h` gave, and `m_bbox.h`
+  picks them up via `doomtype.h`. Where a conditional really is needed, use
+  `#if defined(_WIN32) && !defined(__CYGWIN__)`, as the one-argument `_mkdir`
+  shim in `d_main.c` does. Binary file I/O was already
+  Windows-safe — the MBF code has DOS heritage, so `w_wad.c` uses `O_BINARY` and
+  the save/demo/tranmap paths use `"rb"`/`"wb"`.
 - Files carry original id/MBF copyright headers and RCS `$Log$` history — this is
   expected; keep the style consistent when editing.
