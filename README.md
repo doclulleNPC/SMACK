@@ -54,6 +54,25 @@ make -f Makefile.mingw clean
 `run-win/` gets `smack.exe`, `SDL3.dll` and `smack.wad`; keep them together and
 drop your IWAD in beside them.
 
+### Windows (x64) with Visual Studio 2019
+
+Requires VS2019 (Community or Build Tools) and the MSVC SDL3 SDK
+(`SDL3-devel-VC`). From a VS2019 x64 developer prompt:
+
+```
+nmake /f Makefile.msvc                  # -> obj-msvc\smack.exe, copied into run-msvc\
+nmake /f Makefile.msvc CFG=Debug
+nmake /f Makefile.msvc clean
+```
+
+Or open `msvc\SMACK.sln` and press F7. Either way the runtime image lands in
+`run-msvc\`. Set an `SDL3_DIR` environment variable (or pass `SDL3_DIR=...` to
+nmake) if your SDK is not at `C:\Source\SDL3`.
+
+The MSVC build links the dynamic CRT, so it needs the Visual C++ 2015-2022
+redistributable on machines that lack it; the mingw build has no such
+dependency.
+
 ## Running
 
 You supply your own IWAD (`DOOM.WAD` / `DOOM2.WAD` / `doom1.wad`) — id's IWADs are

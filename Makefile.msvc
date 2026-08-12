@@ -1,0 +1,143 @@
+############################################################################
+# SMACK! - native Windows (x64) build with Visual Studio 2019 (MSVC)
+#
+# This is an NMAKE makefile, not GNU make. Run it from a VS2019 x64 developer
+# prompt (or after calling vcvars64.bat):
+#
+#   nmake /f Makefile.msvc
+#   nmake /f Makefile.msvc CFG=Debug
+#   nmake /f Makefile.msvc clean
+#
+# There is also an IDE project -- msvc\SMACK.sln -- built from these same
+# settings if you would rather press F7.
+#
+# SDL3: point SDL3_DIR at an SDK containing include\SDL3\*.h and
+# lib\x64\SDL3.{lib,dll}. The MSVC package (SDL3-devel-VC) is the natural fit
+# here and is what SDL3.lib below expects.
+#
+#   nmake /f Makefile.msvc SDL3_DIR=C:\SDL3
+############################################################################
+
+!IFNDEF SDL3_DIR
+SDL3_DIR = C:\Source\SDL3
+!ENDIF
+
+!IFNDEF CFG
+CFG = Release
+!ENDIF
+
+!IF "$(CFG)" == "Debug"
+OUTDIR    = obj-msvc-debug
+CFG_CL    = /Od /MDd /Zi /DRANGECHECK /DINSTRUMENTED
+CFG_LINK  = /DEBUG
+!ELSE
+OUTDIR    = obj-msvc
+CFG_CL    = /O2 /MD /Zi
+CFG_LINK  = /DEBUG /OPT:REF /OPT:ICF
+!ENDIF
+
+RUNDIR = run-msvc
+
+# /TC              compile as C (the tree is C, and several files would not
+#                  survive the C++ front end's stricter rules)
+# /FI msvc_compat.h force-include the small compat header (PATH_MAX,
+#                  strcasecmp) -- see msvc\compat\msvc_compat.h
+# /I msvc\compat   supplies unistd.h and sys\time.h, which MSVC lacks
+# /D_CRT_*         the engine uses the POSIX/unsafe CRT spellings throughout
+#                  (open, read, strdup, sprintf); these are deliberate, not
+#                  oversights, so silence the deprecation machinery instead of
+#                  rewriting 1999 code
+# /wd4996 etc.     the remaining noise from K&R-era pointer/qualifier code,
+#                  matching the -Wno-* set the gcc builds use
+#
+# Note there is no strict-aliasing switch here: unlike gcc, MSVC does not
+# perform type-based alias analysis, so the type punning this engine relies on
+# is safe at /O2 without one. (See Makefile.sdl3 for why gcc needs
+# -fno-strict-aliasing.)
+CFLAGS = /nologo /TC /MP $(CFG_CL) \
+	/I. /Imsvc\compat /I"$(SDL3_DIR)\include" \
+	/FImsvc_compat.h \
+	/DWIN32 /D_WIN32 /DSDL3 /DDOGS \
+	/D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_DEPRECATE \
+	/D_CRT_NONSTDC_NO_WARNINGS /D_USE_MATH_DEFINES /DWIN32_LEAN_AND_MEAN \
+	/wd4996 /wd4244 /wd4267 /wd4133 /wd4047 /wd4022 /wd4024 /wd4028 \
+	/wd4029 /wd4090 /wd4101 /wd4102 /wd4013 /wd4716
+
+LIBS = "$(SDL3_DIR)\lib\x64\SDL3.lib" winmm.lib user32.lib shell32.lib
+LDFLAGS = /nologo /SUBSYSTEM:CONSOLE $(CFG_LINK)
+
+EXE = $(OUTDIR)\smack.exe
+
+OBJS = \
+	$(OUTDIR)\i_main.obj    $(OUTDIR)\i_system.obj  $(OUTDIR)\i_video.obj   \
+	$(OUTDIR)\i_sound.obj   $(OUTDIR)\i_net.obj     $(OUTDIR)\p_info.obj    \
+	$(OUTDIR)\c_cmd.obj     $(OUTDIR)\c_io.obj      $(OUTDIR)\c_runcmd.obj  \
+	$(OUTDIR)\c_net.obj     $(OUTDIR)\doomdef.obj   $(OUTDIR)\doomstat.obj  \
+	$(OUTDIR)\dstrings.obj  $(OUTDIR)\tables.obj    $(OUTDIR)\f_finale.obj  \
+	$(OUTDIR)\f_wipe.obj    $(OUTDIR)\d_main.obj    $(OUTDIR)\d_net.obj     \
+	$(OUTDIR)\d_items.obj   $(OUTDIR)\g_game.obj    $(OUTDIR)\g_cmd.obj     \
+	$(OUTDIR)\mn_menus.obj  $(OUTDIR)\mn_misc.obj   $(OUTDIR)\mn_engin.obj  \
+	$(OUTDIR)\m_misc.obj    $(OUTDIR)\m_argv.obj    $(OUTDIR)\m_bbox.obj    \
+	$(OUTDIR)\m_cheat.obj   $(OUTDIR)\m_random.obj  $(OUTDIR)\am_map.obj    \
+	$(OUTDIR)\am_color.obj  $(OUTDIR)\p_ceilng.obj  $(OUTDIR)\p_chase.obj   \
+	$(OUTDIR)\p_cmd.obj     $(OUTDIR)\p_doors.obj   $(OUTDIR)\p_enemy.obj   \
+	$(OUTDIR)\p_floor.obj   $(OUTDIR)\p_hubs.obj    $(OUTDIR)\p_inter.obj   \
+	$(OUTDIR)\p_lights.obj  $(OUTDIR)\p_map.obj     $(OUTDIR)\p_maputl.obj  \
+	$(OUTDIR)\p_plats.obj   $(OUTDIR)\p_pspr.obj    $(OUTDIR)\p_setup.obj   \
+	$(OUTDIR)\p_sight.obj   $(OUTDIR)\p_skin.obj    $(OUTDIR)\p_spec.obj    \
+	$(OUTDIR)\p_switch.obj  $(OUTDIR)\p_mobj.obj    $(OUTDIR)\p_telept.obj  \
+	$(OUTDIR)\p_tick.obj    $(OUTDIR)\p_saveg.obj   $(OUTDIR)\p_user.obj    \
+	$(OUTDIR)\r_bsp.obj     $(OUTDIR)\r_data.obj    $(OUTDIR)\r_draw.obj    \
+	$(OUTDIR)\r_main.obj    $(OUTDIR)\r_plane.obj   $(OUTDIR)\r_segs.obj    \
+	$(OUTDIR)\r_ripple.obj  $(OUTDIR)\r_sky.obj     $(OUTDIR)\r_things.obj  \
+	$(OUTDIR)\w_wad.obj     $(OUTDIR)\wi_stuff.obj  $(OUTDIR)\v_video.obj   \
+	$(OUTDIR)\v_misc.obj    $(OUTDIR)\st_lib.obj    $(OUTDIR)\st_stuff.obj  \
+	$(OUTDIR)\hu_stuff.obj  $(OUTDIR)\hu_over.obj   $(OUTDIR)\hu_frags.obj  \
+	$(OUTDIR)\s_sound.obj   $(OUTDIR)\z_zone.obj    $(OUTDIR)\info.obj      \
+	$(OUTDIR)\sounds.obj    $(OUTDIR)\p_genlin.obj  $(OUTDIR)\d_deh.obj     \
+	$(OUTDIR)\t_script.obj  $(OUTDIR)\t_parse.obj   $(OUTDIR)\t_prepro.obj  \
+	$(OUTDIR)\t_vari.obj    $(OUTDIR)\t_func.obj    $(OUTDIR)\t_oper.obj    \
+	$(OUTDIR)\t_spec.obj    $(OUTDIR)\opl3.obj      $(OUTDIR)\i_opl.obj     \
+	$(OUTDIR)\i_mus.obj     $(OUTDIR)\version.obj   $(OUTDIR)\dogs.obj
+
+# NMAKE has no equivalent of gcc's -MMD -MP, so there is no per-header
+# dependency tracking here: editing an engine header does NOT rebuild the files
+# that include it. Run `nmake /f Makefile.msvc clean` after touching one.
+# The compat headers are wired up explicitly because they are force-included
+# into every object, so a stale one is especially confusing.
+COMPAT_HDRS = msvc\compat\msvc_compat.h msvc\compat\unistd.h msvc\compat\sys\time.h
+
+all: $(EXE) runimage
+
+$(OBJS): $(COMPAT_HDRS)
+
+$(OUTDIR):
+	@if not exist $(OUTDIR) mkdir $(OUTDIR)
+
+# root-level sources
+{}.c{$(OUTDIR)}.obj::
+	@if not exist $(OUTDIR) mkdir $(OUTDIR)
+	$(CC) $(CFLAGS) /Fo$(OUTDIR)\ /Fd$(OUTDIR)\smack.pdb /c $<
+
+# the SDL3 platform layer (shared with the gcc builds)
+{linux}.c{$(OUTDIR)}.obj::
+	@if not exist $(OUTDIR) mkdir $(OUTDIR)
+	$(CC) $(CFLAGS) /Fo$(OUTDIR)\ /Fd$(OUTDIR)\smack.pdb /c $<
+
+$(EXE): $(OUTDIR) $(OBJS)
+	link $(LDFLAGS) $(OBJS) $(LIBS) /OUT:$(EXE)
+
+# The .exe, SDL3.dll and smack.wad must sit together: D_DoomExeDir() derives
+# the data directory from argv[0].
+runimage: $(EXE)
+	@if not exist $(RUNDIR) mkdir $(RUNDIR)
+	copy /y $(EXE) $(RUNDIR)\smack.exe >nul
+	copy /y "$(SDL3_DIR)\lib\x64\SDL3.dll" $(RUNDIR)\SDL3.dll >nul
+	copy /y smack.wad $(RUNDIR)\smack.wad >nul
+	@echo Built $(RUNDIR)\smack.exe
+
+clean:
+	@if exist obj-msvc rmdir /s /q obj-msvc
+	@if exist obj-msvc-debug rmdir /s /q obj-msvc-debug
+
+.PHONY: all clean runimage

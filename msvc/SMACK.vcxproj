@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SMACK! - Visual Studio 2019 project. Mirrors Makefile.msvc; see that file
+     for why each switch is here. Point it at a different SDL3 SDK by setting an
+     SDL3_DIR environment variable before launching Visual Studio. -->
+<Project DefaultTargets="Build" ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <ProjectGuid>{6B1F3A2C-9D44-4C1E-8E5F-2A7C0D3B5E10}</ProjectGuid>
+    <RootNamespace>SMACK</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Label="SDL3Default">
+    <SDL3_DIR Condition="'$(SDL3_DIR)'==''">C:\Source\SDL3</SDL3_DIR>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <OutDir>$(ProjectDir)..\obj-msvc-ide\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)..\obj-msvc-ide\$(Configuration)\obj\</IntDir>
+    <TargetName>smack</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <CompileAs>CompileAsC</CompileAs>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(ProjectDir)..;$(ProjectDir)compat;$(SDL3_DIR)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>RANGECHECK;INSTRUMENTED;WIN32;_WIN32;SDL3;DOGS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;_USE_MATH_DEFINES;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ForcedIncludeFiles>msvc_compat.h</ForcedIncludeFiles>
+      <DisableSpecificWarnings>4996;4244;4267;4133;4047;4022;4024;4028;4029;4090;4101;4102;4013;4716</DisableSpecificWarnings>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>$(SDL3_DIR)\lib\x64\SDL3.lib;winmm.lib;user32.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      
+    </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(ProjectDir)..\run-msvc" mkdir "$(ProjectDir)..\run-msvc"
+copy /y "$(TargetPath)" "$(ProjectDir)..\run-msvc\smack.exe"
+copy /y "$(SDL3_DIR)\lib\x64\SDL3.dll" "$(ProjectDir)..\run-msvc\SDL3.dll"
+copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run-msvc\smack.wad"</Command>
+      <Message>Populating run-msvc (exe + SDL3.dll + smack.wad must sit together)</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <CompileAs>CompileAsC</CompileAs>
+      <Optimization>MaxSpeed</Optimization>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(ProjectDir)..;$(ProjectDir)compat;$(SDL3_DIR)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WIN32;SDL3;DOGS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;_USE_MATH_DEFINES;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ForcedIncludeFiles>msvc_compat.h</ForcedIncludeFiles>
+      <DisableSpecificWarnings>4996;4244;4267;4133;4047;4022;4024;4028;4029;4090;4101;4102;4013;4716</DisableSpecificWarnings>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>$(SDL3_DIR)\lib\x64\SDL3.lib;winmm.lib;user32.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OptimizeReferences>true</OptimizeReferences><EnableCOMDATFolding>true</EnableCOMDATFolding>
+    </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(ProjectDir)..\run-msvc" mkdir "$(ProjectDir)..\run-msvc"
+copy /y "$(TargetPath)" "$(ProjectDir)..\run-msvc\smack.exe"
+copy /y "$(SDL3_DIR)\lib\x64\SDL3.dll" "$(ProjectDir)..\run-msvc\SDL3.dll"
+copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run-msvc\smack.wad"</Command>
+      <Message>Populating run-msvc (exe + SDL3.dll + smack.wad must sit together)</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\linux\i_main.c" />
+    <ClCompile Include="..\linux\i_system.c" />
+    <ClCompile Include="..\linux\i_video.c" />
+    <ClCompile Include="..\linux\i_sound.c" />
+    <ClCompile Include="..\linux\i_net.c" />
+    <ClCompile Include="..\p_info.c" />
+    <ClCompile Include="..\c_cmd.c" />
+    <ClCompile Include="..\c_io.c" />
+    <ClCompile Include="..\c_runcmd.c" />
+    <ClCompile Include="..\c_net.c" />
+    <ClCompile Include="..\doomdef.c" />
+    <ClCompile Include="..\doomstat.c" />
+    <ClCompile Include="..\dstrings.c" />
+    <ClCompile Include="..\tables.c" />
+    <ClCompile Include="..\f_finale.c" />
+    <ClCompile Include="..\f_wipe.c" />
+    <ClCompile Include="..\d_main.c" />
+    <ClCompile Include="..\d_net.c" />
+    <ClCompile Include="..\d_items.c" />
+    <ClCompile Include="..\g_game.c" />
+    <ClCompile Include="..\g_cmd.c" />
+    <ClCompile Include="..\mn_menus.c" />
+    <ClCompile Include="..\mn_misc.c" />
+    <ClCompile Include="..\mn_engin.c" />
+    <ClCompile Include="..\m_misc.c" />
+    <ClCompile Include="..\m_argv.c" />
+    <ClCompile Include="..\m_bbox.c" />
+    <ClCompile Include="..\m_cheat.c" />
+    <ClCompile Include="..\m_random.c" />
+    <ClCompile Include="..\am_map.c" />
+    <ClCompile Include="..\am_color.c" />
+    <ClCompile Include="..\p_ceilng.c" />
+    <ClCompile Include="..\p_chase.c" />
+    <ClCompile Include="..\p_cmd.c" />
+    <ClCompile Include="..\p_doors.c" />
+    <ClCompile Include="..\p_enemy.c" />
+    <ClCompile Include="..\p_floor.c" />
+    <ClCompile Include="..\p_hubs.c" />
+    <ClCompile Include="..\p_inter.c" />
+    <ClCompile Include="..\p_lights.c" />
+    <ClCompile Include="..\p_map.c" />
+    <ClCompile Include="..\p_maputl.c" />
+    <ClCompile Include="..\p_plats.c" />
+    <ClCompile Include="..\p_pspr.c" />
+    <ClCompile Include="..\p_setup.c" />
+    <ClCompile Include="..\p_sight.c" />
+    <ClCompile Include="..\p_skin.c" />
+    <ClCompile Include="..\p_spec.c" />
+    <ClCompile Include="..\p_switch.c" />
+    <ClCompile Include="..\p_mobj.c" />
+    <ClCompile Include="..\p_telept.c" />
+    <ClCompile Include="..\p_tick.c" />
+    <ClCompile Include="..\p_saveg.c" />
+    <ClCompile Include="..\p_user.c" />
+    <ClCompile Include="..\r_bsp.c" />
+    <ClCompile Include="..\r_data.c" />
+    <ClCompile Include="..\r_draw.c" />
+    <ClCompile Include="..\r_main.c" />
+    <ClCompile Include="..\r_plane.c" />
+    <ClCompile Include="..\r_segs.c" />
+    <ClCompile Include="..\r_ripple.c" />
+    <ClCompile Include="..\r_sky.c" />
+    <ClCompile Include="..\r_things.c" />
+    <ClCompile Include="..\w_wad.c" />
+    <ClCompile Include="..\wi_stuff.c" />
+    <ClCompile Include="..\v_video.c" />
+    <ClCompile Include="..\v_misc.c" />
+    <ClCompile Include="..\st_lib.c" />
+    <ClCompile Include="..\st_stuff.c" />
+    <ClCompile Include="..\hu_stuff.c" />
+    <ClCompile Include="..\hu_over.c" />
+    <ClCompile Include="..\hu_frags.c" />
+    <ClCompile Include="..\s_sound.c" />
+    <ClCompile Include="..\z_zone.c" />
+    <ClCompile Include="..\info.c" />
+    <ClCompile Include="..\sounds.c" />
+    <ClCompile Include="..\p_genlin.c" />
+    <ClCompile Include="..\d_deh.c" />
+    <ClCompile Include="..\t_script.c" />
+    <ClCompile Include="..\t_parse.c" />
+    <ClCompile Include="..\t_prepro.c" />
+    <ClCompile Include="..\t_vari.c" />
+    <ClCompile Include="..\t_func.c" />
+    <ClCompile Include="..\t_oper.c" />
+    <ClCompile Include="..\t_spec.c" />
+    <ClCompile Include="..\opl3.c" />
+    <ClCompile Include="..\i_opl.c" />
+    <ClCompile Include="..\i_mus.c" />
+    <ClCompile Include="..\version.c" />
+    <ClCompile Include="..\dogs.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\am_map.h" />
+    <ClInclude Include="..\c_io.h" />
+    <ClInclude Include="..\c_net.h" />
+    <ClInclude Include="..\c_runcmd.h" />
+    <ClInclude Include="..\d_deh.h" />
+    <ClInclude Include="..\d_englsh.h" />
+    <ClInclude Include="..\d_event.h" />
+    <ClInclude Include="..\d_french.h" />
+    <ClInclude Include="..\d_items.h" />
+    <ClInclude Include="..\d_main.h" />
+    <ClInclude Include="..\d_net.h" />
+    <ClInclude Include="..\d_player.h" />
+    <ClInclude Include="..\d_textur.h" />
+    <ClInclude Include="..\d_think.h" />
+    <ClInclude Include="..\d_ticcmd.h" />
+    <ClInclude Include="..\doomdata.h" />
+    <ClInclude Include="..\doomdef.h" />
+    <ClInclude Include="..\doomstat.h" />
+    <ClInclude Include="..\doomtype.h" />
+    <ClInclude Include="..\dstrings.h" />
+    <ClInclude Include="..\f_finale.h" />
+    <ClInclude Include="..\f_wipe.h" />
+    <ClInclude Include="..\g_game.h" />
+    <ClInclude Include="..\hu_frags.h" />
+    <ClInclude Include="..\hu_over.h" />
+    <ClInclude Include="..\hu_stuff.h" />
+    <ClInclude Include="..\i_mus.h" />
+    <ClInclude Include="..\i_net.h" />
+    <ClInclude Include="..\i_opl.h" />
+    <ClInclude Include="..\i_sound.h" />
+    <ClInclude Include="..\i_system.h" />
+    <ClInclude Include="..\i_video.h" />
+    <ClInclude Include="..\i_videox.h" />
+    <ClInclude Include="..\info.h" />
+    <ClInclude Include="..\m_argv.h" />
+    <ClInclude Include="..\m_bbox.h" />
+    <ClInclude Include="..\m_cheat.h" />
+    <ClInclude Include="..\m_fixed.h" />
+    <ClInclude Include="..\m_misc.h" />
+    <ClInclude Include="..\m_random.h" />
+    <ClInclude Include="..\m_swap.h" />
+    <ClInclude Include="..\mn_engin.h" />
+    <ClInclude Include="..\mn_menus.h" />
+    <ClInclude Include="..\mn_misc.h" />
+    <ClInclude Include="..\opl3.h" />
+    <ClInclude Include="..\p_chase.h" />
+    <ClInclude Include="..\p_enemy.h" />
+    <ClInclude Include="..\p_hubs.h" />
+    <ClInclude Include="..\p_info.h" />
+    <ClInclude Include="..\p_inter.h" />
+    <ClInclude Include="..\p_map.h" />
+    <ClInclude Include="..\p_maputl.h" />
+    <ClInclude Include="..\p_mobj.h" />
+    <ClInclude Include="..\p_pspr.h" />
+    <ClInclude Include="..\p_saveg.h" />
+    <ClInclude Include="..\p_setup.h" />
+    <ClInclude Include="..\p_skin.h" />
+    <ClInclude Include="..\p_spec.h" />
+    <ClInclude Include="..\p_tick.h" />
+    <ClInclude Include="..\p_user.h" />
+    <ClInclude Include="..\r_bsp.h" />
+    <ClInclude Include="..\r_data.h" />
+    <ClInclude Include="..\r_defs.h" />
+    <ClInclude Include="..\r_draw.h" />
+    <ClInclude Include="..\r_main.h" />
+    <ClInclude Include="..\r_plane.h" />
+    <ClInclude Include="..\r_ripple.h" />
+    <ClInclude Include="..\r_segs.h" />
+    <ClInclude Include="..\r_sky.h" />
+    <ClInclude Include="..\r_state.h" />
+    <ClInclude Include="..\r_things.h" />
+    <ClInclude Include="..\s_sound.h" />
+    <ClInclude Include="..\sounds.h" />
+    <ClInclude Include="..\st_lib.h" />
+    <ClInclude Include="..\st_stuff.h" />
+    <ClInclude Include="..\t_func.h" />
+    <ClInclude Include="..\t_oper.h" />
+    <ClInclude Include="..\t_parse.h" />
+    <ClInclude Include="..\t_prepro.h" />
+    <ClInclude Include="..\t_script.h" />
+    <ClInclude Include="..\t_spec.h" />
+    <ClInclude Include="..\t_vari.h" />
+    <ClInclude Include="..\tables.h" />
+    <ClInclude Include="..\v_misc.h" />
+    <ClInclude Include="..\v_video.h" />
+    <ClInclude Include="..\version.h" />
+    <ClInclude Include="..\w_wad.h" />
+    <ClInclude Include="..\wf_rom.h" />
+    <ClInclude Include="..\wi_stuff.h" />
+    <ClInclude Include="..\z_zone.h" />
+    <ClInclude Include="compat\msvc_compat.h" />
+    <ClInclude Include="compat\unistd.h" />
+    <ClInclude Include="compat\sys\time.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

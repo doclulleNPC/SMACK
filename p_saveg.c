@@ -1165,7 +1165,7 @@ void P_UnArchiveLevelScript()
 	    save_p = (char *)long_p;
 	    break;
 	  }
-	default:
+	default: break;
 	}
       
       // link in the new variable
@@ -1272,7 +1272,7 @@ void P_ArchiveRunningScript(runningscript_t *rs)
 	      }
 	    // others do not appear in user scripts
 	    
-	    default:
+	    default: break;
 	    }
 	  
 	  sv = sv->next;
@@ -1353,7 +1353,7 @@ runningscript_t *P_UnArchiveRunningScript()
 	    save_p = (char *)long_p;
 	    break;
 	  }
-	default:
+	default: break;
 	}
       
       // link in the new variable

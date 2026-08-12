@@ -641,7 +641,9 @@ void ST_doPaletteStuff(void)
   if (palette != st_palette)
     {
       st_palette = palette;
-      pal = W_CacheLumpNum(lu_palette, PU_CACHE)+palette*768;
+      // cast before the offset: W_CacheLumpNum returns void *, and arithmetic
+      // on void * is a GCC extension that MSVC rejects
+      pal = (byte *)W_CacheLumpNum(lu_palette, PU_CACHE)+palette*768;
       I_SetPalette (pal);
     }
 }

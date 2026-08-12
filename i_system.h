@@ -78,6 +78,11 @@ void I_Quit (void);
 
 // killough 3/20/98: add const
 // killough 4/25/98: add gcc attributes
+// The same no-op as doomdef.h/m_fixed.h carry, repeated because i_system.h is
+// included on its own (linux/i_system.c reaches it before doomdef.h).
+#ifndef __GNUC__
+#define __attribute__(x)
+#endif
 void I_Error(const char *error, ...) __attribute__((format(printf,1,2)));
 
 extern int mousepresent;                // killough

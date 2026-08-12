@@ -71,6 +71,13 @@ typedef struct
 //
 //      source animation definition
 //
+// This layout is read straight out of the ANIMATED lump, so it must stay
+// packed at 23 bytes. MSVC has no __attribute__ -- doomdef.h defines it away
+// on non-gcc compilers -- and would otherwise pad `speed` to offset 20,
+// silently breaking animated flats and textures. Hence the explicit pragma.
+#ifdef _MSC_VER
+#pragma pack(push, 1)
+#endif
 typedef struct
 {
   char istexture;            //jff 3/23/98 make char for comparison
@@ -78,6 +85,9 @@ typedef struct
   char startname[9];
   int  speed;
 } __attribute__ ((packed)) animdef_t; //jff 3/23/98 pack to read from memory
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
 
 #define MAXANIMS 32                   // no longer a strict limit -- killough
 static anim_t *lastanim, *anims;      // new structure w/o limits -- killough

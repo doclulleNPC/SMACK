@@ -263,7 +263,7 @@ void get_tokens(char *s)
 	    next_token();
 	    continue;
 
-	  default:
+	  default: break;
 	  }
 	rover++;
       }

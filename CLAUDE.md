@@ -84,6 +84,47 @@ a Cygwin program, and the two disagree about what `/c/...` means.
 must sit together because `D_DoomExeDir()` derives the data directory from
 `argv[0]`.
 
+### Windows build with Visual Studio 2019 (MSVC)
+
+A second Windows toolchain, independent of the mingw one:
+
+```
+nmake /f Makefile.msvc            # -> obj-msvc\smack.exe, copied into run-msvc\
+nmake /f Makefile.msvc CFG=Debug  # -> obj-msvc-debug\
+nmake /f Makefile.msvc clean
+```
+
+Run it from a VS2019 x64 developer prompt (or after `vcvars64.bat`); NMAKE, not
+GNU make. `msvc\SMACK.sln` is the IDE equivalent — same switches, output in
+`obj-msvc-ide\` — and both populate `run-msvc\`. Override the SDK with
+`SDL3_DIR=...` (nmake) or an `SDL3_DIR` environment variable (IDE). This build
+wants the **MSVC** SDL3 package, since it links `SDL3.lib` properly rather than
+going straight at the DLL like the mingw build does.
+
+**`Makefile.msvc` and `msvc\SMACK.vcxproj` each carry their own source list**, as
+does each gcc makefile — four lists to update when adding a `.c` file. The
+vcxproj is generated from `Makefile.msvc`'s `OBJS`, so regenerate rather than
+hand-edit if you add many files at once.
+
+MSVC specifics worth knowing:
+- **`msvc\compat\`** supplies what MSVC lacks: `unistd.h` and `sys/time.h`
+  stubs (on the include path for this build only), plus `msvc_compat.h`, which
+  is **force-included into every file** (`/FI`) for `PATH_MAX`, `strcasecmp` and
+  `S_ISDIR`. Keep it small — per-file needs belong in that file.
+- **No `-fcommon` equivalent is needed**: MSVC already merges the 1999 tree's
+  tentative-definition globals, so they link without complaint.
+- **No `-fno-strict-aliasing` equivalent is needed** either — MSVC does not do
+  type-based alias analysis, so the engine's type punning is safe at `/O2`.
+- **NMAKE has no header dependency tracking** (no `-MMD -MP`). Editing an engine
+  header does not rebuild its dependents; run `clean` first. Only the compat
+  headers are wired up explicitly.
+- `__attribute__` is defined away for non-gcc compilers in `doomdef.h` /
+  `m_fixed.h`, which quietly **unpacks `__attribute__((packed))` structs**. The
+  three that are read from or written to files — `animdef_t` (the ANIMATED lump,
+  23 bytes) in `p_spec.c` and the two BMP screenshot headers (14/40 bytes) in
+  `m_misc.c` — therefore carry explicit `#pragma pack(push,1)` guards. Any new
+  packed struct needs the same treatment or it will silently gain padding.
+
 Windows-specific gotchas when testing:
 - **`timeout N ./smack.exe` does not kill it.** Cygwin's `timeout` sends SIGTERM,
   which a native Windows process ignores; `timeout` reports 124 while the game

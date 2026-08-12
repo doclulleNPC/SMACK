@@ -24,7 +24,9 @@
 #include "w_wad.h"
 #include "z_zone.h"
 
-skin_t marine={"PLAY", "marine", SPR_PLAY, {}, "STF", 0};
+// {0} rather than {} for the sounds[] array: an empty initializer list is a GCC
+// extension that MSVC rejects. Both zero every element.
+skin_t marine={"PLAY", "marine", SPR_PLAY, {0}, "STF", 0};
 skin_t **skins = NULL;
 char **spritelist = NULL;
 char *default_skin = NULL;     // name of currently selected skin

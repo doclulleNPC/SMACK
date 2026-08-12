@@ -2204,6 +2204,14 @@ typedef unsigned long dword_t;
 typedef long     long_t;
 typedef unsigned char ubyte_t;
 
+// Both headers are written verbatim into the .BMP screenshot file, so their
+// layout is the file format: 14 bytes and 40 bytes respectively. MSVC has no
+// __attribute__ (doomdef.h defines it away on non-gcc compilers) and would pad
+// bfType out to 16 bytes, producing an unreadable screenshot -- so pack these
+// explicitly.
+#ifdef _MSC_VER
+#pragma pack(push, 1)
+#endif
 typedef struct tagBITMAPFILEHEADER
 {
   uint_t  bfType;
@@ -2227,6 +2235,9 @@ typedef struct tagBITMAPINFOHEADER
   dword_t biClrUsed;
   dword_t biClrImportant;
 } __attribute__ ((packed)) BITMAPINFOHEADER;
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
 
 // jff 3/30/98 binary file write with error detection
 // killough 10/98: changed into macro to return failure instead of aborting
