@@ -107,8 +107,15 @@ CFLAGS = /nologo /TC /MP $(CFG_CL) \
 	/DWIN32 /D_WIN32 /DSDL3 /DDOGS \
 	/D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_DEPRECATE \
 	/D_CRT_NONSTDC_NO_WARNINGS /D_USE_MATH_DEFINES /DWIN32_LEAN_AND_MEAN \
+#
+# NOT suppressed on purpose, however tempting: C4013 ("undefined; assuming
+# extern returning int"). An implicitly-declared allocator returns int, which
+# truncates a 64-bit pointer to 32 bits under LLP64 -- it "works" whenever the
+# heap block happens to land below 4 GB and crashes when it does not. That
+# exact bug cost BuddyDoom a hunt (see docs/LEGACY_FIXES.md §9); this tree is
+# clean of it and the warning is the thing that keeps it clean.
 	/wd4996 /wd4244 /wd4267 /wd4133 /wd4047 /wd4022 /wd4024 /wd4028 \
-	/wd4029 /wd4090 /wd4101 /wd4102 /wd4013 /wd4716
+	/wd4029 /wd4090 /wd4101 /wd4102 /wd4716
 
 LIBS = $(SDL_LIBS)
 LDFLAGS = /nologo /SUBSYSTEM:CONSOLE $(CFG_LINK)

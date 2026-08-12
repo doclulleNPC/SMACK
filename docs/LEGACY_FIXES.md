@@ -203,6 +203,38 @@ exist in SMMU.
   zero/sign-extended, and the save buffer is dynamic); the critical mobj refs already
   use `(size_t)`. Hardening-for-parity only, not a live bug.
 
+### 9.1 Re-audit, 2026-08-12 (after the Windows builds landed)
+
+Re-run because Windows x64 is **LLP64** (`long` is 4 bytes, pointers 8) while the
+Linux build is LP64 — code can be LP64-clean and still break on Windows, which is
+how BuddyDoom's worst 64-bit bug surfaced. Result: **nothing missing.**
+
+| BuddyDoom item | Status here |
+|---|---|
+| §1 implicitly-declared `calloc`/`realloc` truncating pointers under LLP64 (their crash) | **Not present.** Verified mechanically, not by eye: built all 91 files with MSVC's `C4013` enabled — zero implicit declarations |
+| §4 `MAXSEGS` 32 → HOM at hi-res | Already `MAX_SCREENWIDTH/2+1` (killough) |
+| §4 `drawsegs` fixed array silently dropping segs | Already grows by doubling (`r_segs.c`) |
+| §4 6 MB zone heap | N/A — `z_zone.c` is a malloc-backed rewrite, no fixed pool |
+| §7 `realloc` moving an array the zone holds `user` back-pointers into | **Structurally N/A.** SMMU keeps the cache pointer *inside* each `lumpinfo_t` (`&lumpinfo[lump]->cache`), not in a parallel `lumpcache[]`, so growing the lump list at runtime (`W_AddNewFile`) cannot dangle a back-pointer |
+| §12 `texturecolumnofs` 16-bit → garbage past ~col 126 in >64 KB patches | Already 32-bit (killough 4/9/98); the `>64k` composite guard is absent too |
+| §12 DeePsea >254-row textures, `dc_texheight` column wrap | Done — §13 and §10 |
+| §14 `MAXSWITCHES` overflow on a big Boom `SWITCHES` lump | Already dynamic (`max_numswitches` doubles) |
+| Sound-channel starvation (`snd_channels` default 3) | Already 32 here |
+
+Two things the re-audit did turn up, both fixed:
+
+- **`/wd4013` had been added to `Makefile.msvc`.** Suppressing that warning would
+  have hidden precisely BuddyDoom's truncated-allocator bug. Removed, with a comment
+  saying why it must stay off.
+- **`m_misc.c` printed `intptr_t` with `%d`** in the config-help output. Benign on
+  x64 varargs (the value is small and each argument gets its own slot) but wrong;
+  narrowed explicitly.
+
+One deliberate difference, not a bug: `R_DrawMaskedColumn` sets `dc_texheight = 0`
+(MBF's behaviour, giving an unmasked index) where BuddyDoom sets `128` to keep the
+vanilla wrap as a safety net. Sprite posts derive `dc_yl`/`dc_yh` from the post's
+own length, so the mask is not load-bearing here.
+
 ---
 
 ## 10. WiggleHack II — tall-wall texture shimmer

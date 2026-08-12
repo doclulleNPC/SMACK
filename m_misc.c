@@ -1813,12 +1813,15 @@ void M_SaveDefaults (void)
 	     fprintf(f,"[(\"%s\")]", (char *) dp->defaultvalue) :
 	     dp->limit.min == UL ?
 	     dp->limit.max == UL ?
-	     fprintf(f, "[?-?(%d)]", dp->defaultvalue) :
-	     fprintf(f, "[?-%d(%d)]", dp->limit.max, dp->defaultvalue) :
+	     // defaultvalue is intptr_t (it doubles as a char * for string
+	     // defaults), so it must be narrowed explicitly for %d rather than
+	     // passed 64 bits wide into a 32-bit conversion
+	     fprintf(f, "[?-?(%d)]", (int) dp->defaultvalue) :
+	     fprintf(f, "[?-%d(%d)]", dp->limit.max, (int) dp->defaultvalue) :
 	     dp->limit.max == UL ?
-	     fprintf(f, "[%d-?(%d)]", dp->limit.min, dp->defaultvalue) :
+	     fprintf(f, "[%d-?(%d)]", dp->limit.min, (int) dp->defaultvalue) :
 	     fprintf(f, "[%d-%d(%d)]", dp->limit.min, dp->limit.max,
-		     dp->defaultvalue)) == EOF ||
+		     (int) dp->defaultvalue)) == EOF ||
 	    fprintf(f," %s %s\n", dp->help, dp->wad_allowed ? "*" :"") == EOF)
 	  goto error;
 
