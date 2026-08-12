@@ -57,7 +57,8 @@ CFLAGS_RELEASE = -O2
 
 DEPFLAGS       = -MMD -MP
 
-LIBS_COMMON    = $(SDL_LIBS) -lm -lwinmm
+# advapi32: d_iwad.c reads Steam's install path out of the registry
+LIBS_COMMON    = $(SDL_LIBS) -lm -lwinmm -ladvapi32
 LDFLAGS_COMMON = -mconsole
 
 CFLAGS  = $(CFLAGS_COMMON) $(CFLAGS_$(MODE))
@@ -86,6 +87,7 @@ OBJS = \
 	$(O)/f_finale.o    \
 	$(O)/f_wipe.o      \
 	$(O)/d_main.o      \
+	$(O)/d_iwad.o      \
 	$(O)/d_net.o       \
 	$(O)/d_items.o     \
 	$(O)/g_game.o      \
@@ -168,6 +170,8 @@ EXE = $(O)/smack.exe
 # The Linux binary is `smack` and the Windows one `smack.exe`, so they coexist;
 # two *Windows* builds do overwrite each other's smack.exe.
 RUNDIR = run
+# Data subdirectory (DOOMDATADIR in d_main.c): WADs, smack.cfg, savegames.
+DATADIR = ID0
 
 all: $(EXE) run
 
@@ -176,11 +180,13 @@ $(EXE): $(OBJS)
 
 # Windows has no dependable symlinks for this purpose, so the runtime image is
 # populated by copying.
+# WADs go in the ID0 data subdirectory, where the engine looks for them (along
+# with smack.cfg and savegames); the binary and its DLL stay in run/ itself.
 run: $(EXE)
-	mkdir -p $(RUNDIR)
+	mkdir -p $(RUNDIR)/$(DATADIR)
 	cp -f $(EXE) $(RUNDIR)/smack.exe
 	cp -f $(SDL3_DLL) $(RUNDIR)/SDL3.dll
-	cp -f smack.wad $(RUNDIR)/smack.wad
+	cp -f smack.wad $(RUNDIR)/$(DATADIR)/smack.wad
 
 $(O)/%.o: %.c | $(O)
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@

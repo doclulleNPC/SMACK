@@ -60,6 +60,29 @@ and `linux/` sources share one object directory via two pattern rules, so a
 basename may not be used twice across those directories. **`Makefile.sdl3` and
 `Makefile.mingw` each carry their own copy of `OBJS`** — add new sources to both.
 
+### Batch wrappers (the easy path on Windows)
+
+`build-mingw.bat` and `build-vs2019.bat` at the repo root locate the toolchain
+and then hand off to the makefiles, so they cannot drift from the real build:
+
+```
+build-mingw.bat  [debug|clean|rebuild]
+build-vs2019.bat [debug|static|ide|clean|rebuild]
+```
+
+Both run `tools\check-sources.ps1` first, which compares the source lists in
+`Makefile.sdl3`, `Makefile.mingw`, `Makefile.msvc` and `msvc\SMACK.vcxproj` and
+warns if they disagree — **there are four separate lists**, and forgetting one
+produces a link error on a toolchain you weren't using at the time. Run it by
+hand after adding a `.c` file; the vcxproj is generated from `Makefile.msvc`.
+
+Two batch-scripting traps bit this repo twice each, so watch for them:
+`%ProgramFiles(x86)%` expanded with `%` inside a parenthesised block or `for`
+list closes the block at its literal `(x86)` — use delayed expansion (`!VAR!`).
+And a bare `smack.exe` fails even from its own directory when
+`NoDefaultCurrentDirectoryInExePath` is set (MSYS/Git-Bash shells export it) —
+invoke by full path.
+
 ### Windows build
 
 `Makefile.mingw` produces a native Win64 `.exe` (no Cygwin/MSYS runtime
@@ -184,8 +207,8 @@ committed (id copyright). `docs/PARAMETERS.md` is the full flag list;
 - **Config persistence:** all console/config variables (screensize, HUD, key bindings, automap options, gamma, volumes, …) are written to `run (next to the binary)/smack.cfg` on clean exit via `M_SaveDefaults`, called from `I_Quit` (atexit). The **window size is NOT persisted** — it derives from `SMACK_SCALE` each launch (`win_w`/`win_h` in `linux/i_video.c` aren't config vars).
 - **Palette note:** `I_SetPalette` (`linux/i_video.c`) must NOT shift gamma values `>> 2` — that was for the VGA 6-bit DAC and makes SDL's 8-bit output ¼ brightness (the "everything is dark" bug). It writes full 0–255 values.
 - `SDL_VIDEODRIVER=dummy` / `SDL_AUDIODRIVER=dummy` — headless smoke tests; `-nodraw`/`-nosound`/`-nomusic` do the same at the game level.
-- **Config and saves land in different places**, which matters when launching from elsewhere: `smack.cfg` goes next to the *binary* (`D_DoomExeDir()`), while savegames default to the *current working directory* (`basesavegame` is set to `"."` in `d_main.c`, overridable with `-save DIR`). They coincide only because the documented way to launch is `cd run` first.
-- **IWAD search order** (`FindIWADFile()` in `d_main.c`): `-iwad` (a file, a directory to search, or a bare custom name) → the current directory, then the binary's directory → `$DOOMWADDIR`, then `$HOME`. Within a directory the standard names are tried in the order `doom2f.wad`, `doom2.wad`, `plutonia.wad`, `tnt.wad`, `doom.wad`, `doom1.wad`, so DOOM II wins when several sit side by side. Those names are lowercase and the comparison is a plain `stat()`, so on Linux an uppercase `DOOM2.WAD` is **not** found by the automatic search — only via explicit `-iwad`.
+- **The `ID0` data directory.** `D_DoomDataDir()` in `d_main.c` returns `<exe dir>/ID0` (the name is `DOOMDATADIR`) and creates it on first use. WADs, `smack.cfg` and savegames all live there, so `run/` itself holds only the binary and its DLLs. All four build systems deploy `smack.wad` into `run/ID0/`. Fallbacks are deliberate: `smack.wad` is still accepted next to the binary if it is not in `ID0`, and `-file` resolves a name as given before trying `ID0` (`D_FindUserWad()`), so absolute and relative paths keep working. Savegames used to default to the *current* directory and the config to the binary's directory; both now point at `ID0`.
+- **IWAD search order** (`FindIWADFile()` in `d_main.c`): `-iwad` (a file, a directory to search, or a bare custom name) → the `ID0` data directory → the current directory, then the binary's directory → `$DOOMWADDIR`, then `$HOME` → Steam (`d_iwad.c`). Within a directory the standard names are tried in the order `doom2f.wad`, `doom2.wad`, `plutonia.wad`, `tnt.wad`, `doom.wad`, `doom1.wad`, so DOOM II wins when several sit side by side. Those names are lowercase and the comparison is a plain `stat()`, so on Linux an uppercase `DOOM2.WAD` is **not** found by the automatic search — only via explicit `-iwad`. (The Steam search in `d_iwad.c` is the exception: it tries each name as-given, lowercased and uppercased, because Steam's classic packaging ships `DOOM.WAD` in capitals.)
 
 Sound is fully implemented. SFX: `linux/i_sound.c` mixes Doom's 8-bit DMX lumps into a 16-bit stereo SDL3 stream via a pull callback (`snd_card` set on init). Music: authentic **OPL3 synthesis** — Nuked-OPL3 (`opl3.c`) + a GENMIDI voice player (`i_opl.c`) + a MUS/MIDI sequencer (`i_mus.c`), rendered into the same audio callback and mixed over the SFX. `I_InitMusic` (called from `S_Init`) loads the IWAD `GENMIDI` and sets `mus_card`. See `docs/LEGACY_FIXES.md` §3/§10.
 

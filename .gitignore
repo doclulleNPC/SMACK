@@ -9,6 +9,9 @@ objdebug/
 run/smack
 run/smack.exe
 run/SDL3.dll
+# the ID0 data directory is created at build/run time and holds
+# WADs, config and saves -- none of which belong in the repo
+run/ID0/
 run/smmu
 run/smmu_release
 run/smack.wad

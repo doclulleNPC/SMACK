@@ -59,9 +59,10 @@
     </Link>
     <PostBuildEvent>
       <Command>if not exist "$(ProjectDir)..\run" mkdir "$(ProjectDir)..\run"
+if not exist "$(ProjectDir)..\run\ID0" mkdir "$(ProjectDir)..\run\ID0"
 copy /y "$(TargetPath)" "$(ProjectDir)..\run\smack.exe"
 copy /y "$(SDL3_DIR)\lib\x64\SDL3.dll" "$(ProjectDir)..\run\SDL3.dll"
-copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run\smack.wad"</Command>
+copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run\ID0\smack.wad"</Command>
       <Message>Populating run (exe + SDL3.dll + smack.wad must sit together)</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -85,9 +86,10 @@ copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run\smack.wad"</Command>
     </Link>
     <PostBuildEvent>
       <Command>if not exist "$(ProjectDir)..\run" mkdir "$(ProjectDir)..\run"
+if not exist "$(ProjectDir)..\run\ID0" mkdir "$(ProjectDir)..\run\ID0"
 copy /y "$(TargetPath)" "$(ProjectDir)..\run\smack.exe"
 copy /y "$(SDL3_DIR)\lib\x64\SDL3.dll" "$(ProjectDir)..\run\SDL3.dll"
-copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run\smack.wad"</Command>
+copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run\ID0\smack.wad"</Command>
       <Message>Populating run (exe + SDL3.dll + smack.wad must sit together)</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -111,8 +113,9 @@ copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run\smack.wad"</Command>
     </Link>
     <PostBuildEvent>
       <Command>if not exist "$(ProjectDir)..\run" mkdir "$(ProjectDir)..\run"
+if not exist "$(ProjectDir)..\run\ID0" mkdir "$(ProjectDir)..\run\ID0"
 copy /y "$(TargetPath)" "$(ProjectDir)..\run\smack.exe"
-copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run\smack.wad"</Command>
+copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run\ID0\smack.wad"</Command>
       <Message>Populating run (standalone exe + smack.wad; SDL3 is inside the exe)</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -207,6 +210,7 @@ copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run\smack.wad"</Command>
     <ClCompile Include="..\i_mus.c" />
     <ClCompile Include="..\version.c" />
     <ClCompile Include="..\dogs.c" />
+    <ClCompile Include="..\d_iwad.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\am_map.h" />
@@ -218,6 +222,7 @@ copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run\smack.wad"</Command>
     <ClInclude Include="..\d_event.h" />
     <ClInclude Include="..\d_french.h" />
     <ClInclude Include="..\d_items.h" />
+    <ClInclude Include="..\d_iwad.h" />
     <ClInclude Include="..\d_main.h" />
     <ClInclude Include="..\d_net.h" />
     <ClInclude Include="..\d_player.h" />

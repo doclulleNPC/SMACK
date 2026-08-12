@@ -61,6 +61,7 @@ OBJS = \
 	$(O)/f_finale.o    \
 	$(O)/f_wipe.o      \
 	$(O)/d_main.o      \
+	$(O)/d_iwad.o      \
 	$(O)/d_net.o       \
 	$(O)/d_items.o     \
 	$(O)/g_game.o      \
@@ -140,6 +141,8 @@ EXE = $(O)/smack
 # runtime image: the binary and everything needed to launch SMACK! live here.
 # Shared with the Windows builds -- every toolchain deploys into run/.
 RUNDIR = run
+# Data subdirectory (DOOMDATADIR in d_main.c): WADs, smack.cfg, savegames.
+DATADIR = ID0
 
 all: $(EXE) run
 
@@ -148,10 +151,12 @@ $(EXE): $(OBJS)
 
 # copy the freshly built binary and its data into the run/ directory so
 # `cd run && ./smack -iwad ...` always uses the latest build
+# WADs go in the ID0 data subdirectory, where the engine looks for them (along
+# with smack.cfg and savegames); the binary stays in run/ itself.
 run: $(EXE)
-	mkdir -p $(RUNDIR)
+	mkdir -p $(RUNDIR)/$(DATADIR)
 	cp -f $(EXE) $(RUNDIR)/smack
-	ln -sf ../smack.wad $(RUNDIR)/smack.wad
+	ln -sf ../../smack.wad $(RUNDIR)/$(DATADIR)/smack.wad
 
 $(O)/%.o: %.c | $(O)
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@

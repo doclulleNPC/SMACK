@@ -60,7 +60,8 @@ RT_DEBUG   = /MTd
 STATIC_SUFFIX = -static
 !ELSE
 SDL_INC  = /I"$(SDL3_DIR)\include"
-SDL_LIBS = "$(SDL3_DIR)\lib\x64\SDL3.lib" winmm.lib user32.lib shell32.lib
+# advapi32: d_iwad.c reads Steam's install path out of the registry
+SDL_LIBS = "$(SDL3_DIR)\lib\x64\SDL3.lib" winmm.lib user32.lib shell32.lib advapi32.lib
 RT_RELEASE = /MD
 RT_DEBUG   = /MDd
 STATIC_SUFFIX =
@@ -80,6 +81,9 @@ CFG_LINK  = /DEBUG /OPT:REF /OPT:ICF
 # its output into this one directory. Note that means two Windows builds
 # overwrite each other's smack.exe; only the object directories are separate.
 RUNDIR = run
+# Data subdirectory (DOOMDATADIR in d_main.c): WADs, smack.cfg, savegames.
+# The binary and SDL3.dll stay in run\ itself.
+DATADIR = ID0
 
 # /TC              compile as C (the tree is C, and several files would not
 #                  survive the C++ front end's stricter rules)
@@ -141,7 +145,8 @@ OBJS = \
 	$(OUTDIR)\t_script.obj  $(OUTDIR)\t_parse.obj   $(OUTDIR)\t_prepro.obj  \
 	$(OUTDIR)\t_vari.obj    $(OUTDIR)\t_func.obj    $(OUTDIR)\t_oper.obj    \
 	$(OUTDIR)\t_spec.obj    $(OUTDIR)\opl3.obj      $(OUTDIR)\i_opl.obj     \
-	$(OUTDIR)\i_mus.obj     $(OUTDIR)\version.obj   $(OUTDIR)\dogs.obj
+	$(OUTDIR)\i_mus.obj     $(OUTDIR)\version.obj   $(OUTDIR)\dogs.obj     \
+	$(OUTDIR)\d_iwad.obj
 
 # NMAKE has no equivalent of gcc's -MMD -MP, so there is no per-header
 # dependency tracking here: editing an engine header does NOT rebuild the files
@@ -175,11 +180,12 @@ $(EXE): $(OUTDIR) $(OBJS)
 # the STATIC=1 build has SDL3 inside the exe and needs no DLL at all.
 runimage: $(EXE)
 	@if not exist $(RUNDIR) mkdir $(RUNDIR)
+	@if not exist $(RUNDIR)\$(DATADIR) mkdir $(RUNDIR)\$(DATADIR)
 	copy /y $(EXE) $(RUNDIR)\smack.exe >nul
 !IF "$(STATIC)" != "1"
 	copy /y "$(SDL3_DIR)\lib\x64\SDL3.dll" $(RUNDIR)\SDL3.dll >nul
 !ENDIF
-	copy /y smack.wad $(RUNDIR)\smack.wad >nul
+	copy /y smack.wad $(RUNDIR)\$(DATADIR)\smack.wad >nul
 	@echo Built $(RUNDIR)\smack.exe
 
 clean:

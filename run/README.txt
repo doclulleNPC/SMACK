@@ -19,11 +19,16 @@ Contents
   SDL3.dll        Windows only, and only for the dynamically-linked builds.
                   The `nmake /f Makefile.msvc STATIC=1` build has SDL3 inside
                   the .exe and needs no DLL at all.
-  smack.wad       SMACK's own PWAD. Required. On Linux this is a symlink to
-                  ../smack.wad; on Windows it is a copy.
   smack.bat       Windows convenience launcher (see below).
-  smack.cfg       your settings. Written on exit, created on first run.
-  savegames       your saves, if you started SMACK from this directory.
+  ID0\            the data directory -- everything else lives in here:
+
+      smack.wad       SMACK's own PWAD. Required. On Linux this is a symlink
+                      to ../../smack.wad; on Windows it is a copy.
+      <your IWAD>     DOOM2.WAD, doom1.wad, ... -- drop it in here.
+      <your PWADs>    -file looks here too, so `-file mymap.wad` works
+                      without a path.
+      smack.cfg       your settings. Written on exit, created on first run.
+      savegames\      your saves.
 
 You supply your own IWAD -- none is included.
 
@@ -57,15 +62,30 @@ In order, stopping at the first hit (FindIWADFile() in d_main.c):
        -iwad <file>  uses that file directly.
        -iwad <dir>   searches that directory for the standard names below.
        -iwad <name>  a bare name with no path is remembered as a custom name
-                     and looked for in steps 2-3 instead of the standard ones.
+                     and looked for in the steps below instead of the
+                     standard ones.
        A missing ".wad" extension is added automatically.
-  2. The current working directory, then the directory containing the binary.
-     (These are the same thing when you `cd run` first, which is why that is
-     the recommended way to launch.)
-  3. The DOOMWADDIR environment variable, then HOME. Either may name a file
+  2. The ID0 data directory. This is the normal place to keep your IWAD.
+  3. The current working directory, then the directory containing the binary.
+  4. The DOOMWADDIR environment variable, then HOME. Either may name a file
      directly or a directory to search.
+  5. Steam. SMACK finds Steam itself (from the registry on Windows, from the
+     usual locations on Linux and macOS, including Flatpak) and reads
+     steamapps\libraryfolders.vdf so games on other drives are covered. It
+     then looks in the DOOM installs: the classic DOSBox copies under
+     base\ (including the Final Doom and DOOM II subfolders), the BFG
+     Edition, and the 2024 "DOOM + DOOM II" re-release under rerelease\.
 
-Within steps 2 and 3 the standard IWAD names are tried in this order:
+     Steam comes last, so an IWAD you put in ID0 always wins.
+
+     Caveat: the 2024 re-release IWADs are searched last of all, because they
+     carry ID24 extensions this 1999-derived renderer does not understand --
+     loading rerelease\doom2.wad crashes during R_Init. Steam now ships both
+     packagings together, so the classic copy is picked automatically and it
+     works. If the re-release is all you have, use the classic IWAD from
+     another source.
+
+Within steps 2-5 the standard IWAD names are tried in this order:
 
     doom2f.wad  doom2.wad  plutonia.wad  tnt.wad  doom.wad  doom1.wad
 
@@ -73,8 +93,10 @@ so if several IWADs sit side by side, DOOM II wins over Plutonia, TNT, and
 DOOM 1. Pass -iwad explicitly when you want a specific one.
 
 Note the names in that list are lowercase. Windows does not care, but on Linux
-the filesystem is case-sensitive: a file called DOOM2.WAD will NOT be found by
-the automatic search. Either rename it to doom2.wad or name it with -iwad.
+and macOS the filesystem is case-sensitive: a file called DOOM2.WAD in ID0 will
+NOT be found by the automatic search. Either rename it to doom2.wad or name it
+with -iwad. (The Steam search does try both spellings, because Steam's classic
+packaging ships DOOM.WAD in capitals.)
 
 If nothing is found, SMACK exits with "IWAD not found".
 
@@ -82,13 +104,12 @@ If nothing is found, SMACK exits with "IWAD not found".
 Files SMACK writes
 ------------------
 
-  smack.cfg    next to the binary, i.e. in this directory. Holds every
-               console variable: screen size, HUD style, key bindings,
-               automap options, gamma, volumes. Written on a clean exit,
-               so quit properly rather than killing the process.
-  savegames/   in the CURRENT directory, not necessarily next to the binary.
-               Use -save DIR to put them somewhere specific.
-  tranmap.dat  a cached translucency table, regenerated if deleted.
+  ID0\smack.cfg     every console variable: screen size, HUD style, key
+                    bindings, automap options, gamma, volumes. Written on a
+                    clean exit, so quit properly rather than killing the
+                    process.
+  ID0\savegames\    save slots. -save DIR puts them somewhere else.
+  tranmap.dat       a cached translucency table, regenerated if deleted.
 
 
 Display

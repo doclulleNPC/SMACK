@@ -37,7 +37,11 @@ static const char rcsid[] = "$Id: d_main.c,v 1.47 1998/05/16 09:16:51 killough E
 #define mkdir(path, mode) _mkdir(path)
 #endif
 
+// Name of the data subdirectory: WADs, config and savegames.
+#define DOOMDATADIR "ID0"
+
 #include "doomdef.h"
+#include "d_iwad.h"
 #include "doomstat.h"
 #include "dstrings.h"
 #include "sounds.h"
@@ -549,6 +553,25 @@ static char title[128];
 
 static int numwadfiles, numwadfiles_alloc;
 
+// Resolve a WAD named on the command line: as given first (so absolute and
+// relative paths keep working), then in the ID0 data directory, so that
+// `-file mymap.wad` finds ID0/mymap.wad. If neither exists the name is handed
+// back unchanged and the WAD loader reports the failure as it always did.
+char *D_FindUserWad(const char *name)
+{
+  static char path[PATH_MAX+1];
+  struct stat sb;
+
+  if (!name || !*name || !stat(name, &sb))
+    return (char *)name;
+
+  sprintf(path, "%s/%s", D_DoomDataDir(), name);
+  if (!stat(path, &sb))
+    return path;
+
+  return (char *)name;
+}
+
 void D_AddFile(char *file)
 {
         // sf: allocate for +2 for safety
@@ -583,6 +606,32 @@ char *D_DoomExeDir(void)
 	*p--=0;
     }
   return base;
+}
+
+// SMACK keeps its data in an "ID0" subdirectory of the executable's directory:
+// IWADs, PWADs, smack.cfg and savegames all live there, so the directory next
+// to the binary holds nothing but the binary and its libraries. Created on
+// first use; if it cannot be created the engine still works, it just finds
+// nothing there and falls back to the older locations.
+char *D_DoomDataDir(void)
+{
+  static char *dir;
+  if (!dir)         // cache multiple requests
+    {
+      const char *exedir = D_DoomExeDir();
+      size_t len = strlen(exedir);
+
+      dir = malloc(len + sizeof(DOOMDATADIR) + 2);
+      strcpy(dir, exedir);
+      // D_DoomExeDir() keeps its trailing separator, but not when argv[0] had
+      // no path component at all
+      if (len && dir[len-1] != '/' && dir[len-1] != '\\')
+        strcat(dir, "/");
+      strcat(dir, DOOMDATADIR);
+
+      mkdir(dir, 0755);     // already exists is fine, and so is failure
+    }
+  return dir;
 }
 
 // killough 10/98: return the name of the program the exe was invoked as
@@ -780,9 +829,11 @@ char *FindIWADFile(void)
 	  AddDefaultExtension(strcat(strcpy(customiwad, "/"), iwad), ".wad");
     }
 
-  for (j=0; j<2; j++)
+  // ID0 (the data directory) first, then the current directory, then the
+  // directory the executable came from
+  for (j=0; j<3; j++)
     {
-      strcpy(iwad, j ? D_DoomExeDir() : ".");
+      strcpy(iwad, j==0 ? D_DoomDataDir() : j==1 ? "." : D_DoomExeDir());
       NormalizeSlashes(iwad);
 
       if(devparm)       // sf: only show 'looking in' for devparm
@@ -844,6 +895,28 @@ char *FindIWADFile(void)
 	    }
       }
 
+  // Last resort: whatever Steam has installed, including the 2024 re-release.
+  // Deliberately after everything above, so a WAD the user put in ID0 or named
+  // explicitly always wins over one Steam happens to have. See d_iwad.c.
+  {
+    const char *steam;
+
+    if (*customiwad)
+      {
+        const char *one = customiwad;
+        steam = D_SteamFindIWAD(&one, 1);
+      }
+    else
+      steam = D_SteamFindIWAD(standard_iwads, nstandard_iwads);
+
+    if (steam)
+      {
+        strcpy(iwad, steam);
+        printf("Found IWAD in Steam: %s\n", iwad);
+        return iwad;
+      }
+  }
+
   *iwad = 0;
   return iwad;
 }
@@ -879,11 +952,14 @@ void IdentifyVersion (void)
 
   // get config file from same directory as executable
   // killough 10/98
-  sprintf(basedefault,"%s/%s.cfg", D_DoomExeDir(), D_DoomExeName());
+  // ...which is the ID0 data directory, alongside the WADs and savegames
+  sprintf(basedefault,"%s/%s.cfg", D_DoomDataDir(), D_DoomExeName());
 
-  // set save path to -save parm or current dir
+  // set save path to -save parm, else the data directory (it used to default
+  // to the current directory, which put saves wherever you happened to launch
+  // from -- killough's comment below predates ID0)
 
-  strcpy(basesavegame,".");       //jff 3/27/98 default to current dir
+  strcpy(basesavegame,D_DoomDataDir());
   if ((i=M_CheckParm("-save")) && i<myargc-1) //jff 3/24/98 if -save present
     {
       if (!stat(myargv[i+1],&sbuf) && S_ISDIR(sbuf.st_mode)) // and is a dir
@@ -1317,10 +1393,15 @@ void D_DoomMain(void)
     }
   
   {
-    char filestr[128];
-    // get smmu.wad from the same directory as smmu.exe
+    // smack.wad: preferred in the ID0 data directory, but still accepted next
+    // to the executable, which is where it lived before ID0 existed.
     // 25/10/99: use same name as exe
-    sprintf(filestr, "%s%s.wad", D_DoomExeDir(), D_DoomExeName());
+    char filestr[PATH_MAX+1];
+    struct stat sb;
+
+    sprintf(filestr, "%s/%s.wad", D_DoomDataDir(), D_DoomExeName());
+    if (stat(filestr, &sb))
+      sprintf(filestr, "%s%s.wad", D_DoomExeDir(), D_DoomExeName());
     D_AddFile(filestr);
   }
 
@@ -1343,7 +1424,7 @@ void D_DoomMain(void)
 	  file = !strcasecmp(myargv[p],"-file");
 	else
 	  if (file)
-	    D_AddFile(myargv[p]);
+	    D_AddFile(D_FindUserWad(myargv[p]));
     }
 
   if (!(p = M_CheckParm("-playdemo")) || p >= myargc-1)    // killough

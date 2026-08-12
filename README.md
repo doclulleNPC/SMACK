@@ -39,6 +39,20 @@ make -f Makefile.sdl3 debug    # debug build
 make -f Makefile.sdl3 clean
 ```
 
+### Windows (x64) -- the easy way
+
+From a normal command prompt, no environment setup needed:
+
+```
+build-mingw.bat            release build with mingw-w64
+build-vs2019.bat           release build with Visual Studio 2019
+build-vs2019.bat static    standalone single-file exe
+```
+
+Both find the toolchain themselves and deploy into `run\`. Add `debug`,
+`clean` or `rebuild` as needed. The sections below describe the makefiles
+these wrap.
+
 ### Windows (x64)
 
 Requires a mingw-w64 gcc and an SDL3 SDK (the MSVC `SDL3-devel-VC` package works

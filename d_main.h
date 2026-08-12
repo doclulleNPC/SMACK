@@ -41,6 +41,7 @@ int D_AddNewFile(char *s);
 
 char *D_DoomExeDir(void);       // killough 2/16/98: path to executable's dir
 char *D_DoomExeName(void);      // killough 10/98: executable's name
+char *D_DoomDataDir(void);      // the ID0 subdirectory: wads, config, saves
 void NormalizeSlashes(char *);  // killough 11/98
 extern char basesavegame[];     // killough 2/16/98: savegame path
 
