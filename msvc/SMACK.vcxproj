@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SMACK! - Visual Studio 2019 project. Mirrors Makefile.msvc; see that file
-     for why each switch is here. Point it at a different SDL3 SDK by setting an
-     SDL3_DIR environment variable before launching Visual Studio. -->
+     for why each switch is here. Point it at different SDL3 SDKs by setting
+     SDL3_DIR / SDL3_STATIC_DIR environment variables before launching Visual
+     Studio.
+
+     Configurations:
+       Debug          /MDd, SDL3.dll        -> run-msvc\
+       Release        /MD,  SDL3.dll        -> run-msvc\
+       ReleaseStatic  /MT,  SDL3 linked in  -> run-msvc-static\  (standalone,
+                      single .exe; run msvc\build-sdl3-static.bat first) -->
 <Project DefaultTargets="Build" ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
     <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="ReleaseStatic|x64"><Configuration>ReleaseStatic</Configuration><Platform>x64</Platform></ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -14,6 +22,7 @@
   </PropertyGroup>
   <PropertyGroup Label="SDL3Default">
     <SDL3_DIR Condition="'$(SDL3_DIR)'==''">C:\Source\SDL3</SDL3_DIR>
+    <SDL3_STATIC_DIR Condition="'$(SDL3_STATIC_DIR)'==''">C:\Source\SDL3-static</SDL3_STATIC_DIR>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
@@ -77,6 +86,31 @@ copy /y "$(TargetPath)" "$(ProjectDir)..\run-msvc\smack.exe"
 copy /y "$(SDL3_DIR)\lib\x64\SDL3.dll" "$(ProjectDir)..\run-msvc\SDL3.dll"
 copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run-msvc\smack.wad"</Command>
       <Message>Populating run-msvc (exe + SDL3.dll + smack.wad must sit together)</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseStatic|x64'">
+    <ClCompile>
+      <CompileAs>CompileAsC</CompileAs>
+      <Optimization>MaxSpeed</Optimization>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(ProjectDir)..;$(ProjectDir)compat;$(SDL3_STATIC_DIR)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WIN32;SDL3;DOGS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_NONSTDC_NO_WARNINGS;_USE_MATH_DEFINES;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ForcedIncludeFiles>msvc_compat.h</ForcedIncludeFiles>
+      <DisableSpecificWarnings>4996;4244;4267;4133;4047;4022;4024;4028;4029;4090;4101;4102;4013;4716</DisableSpecificWarnings>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>$(SDL3_STATIC_DIR)\lib\SDL3-static.lib;kernel32.lib;user32.lib;gdi32.lib;winmm.lib;imm32.lib;ole32.lib;oleaut32.lib;version.lib;uuid.lib;advapi32.lib;setupapi.lib;shell32.lib;dinput8.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OptimizeReferences>true</OptimizeReferences><EnableCOMDATFolding>true</EnableCOMDATFolding>
+    </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(ProjectDir)..\run-msvc-static" mkdir "$(ProjectDir)..\run-msvc-static"
+copy /y "$(TargetPath)" "$(ProjectDir)..\run-msvc-static\smack.exe"
+copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run-msvc-static\smack.wad"</Command>
+      <Message>Populating run-msvc-static (standalone exe + smack.wad; SDL3 is inside the exe)</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

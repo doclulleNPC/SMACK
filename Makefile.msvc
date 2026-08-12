@@ -22,21 +22,61 @@
 SDL3_DIR = C:\Source\SDL3
 !ENDIF
 
+# Where msvc\build-sdl3-static.bat installed a statically-linkable SDL3.
+!IFNDEF SDL3_STATIC_DIR
+SDL3_STATIC_DIR = C:\Source\SDL3-static
+!ENDIF
+
 !IFNDEF CFG
 CFG = Release
 !ENDIF
 
+# STATIC=1 produces a standalone single-file smack.exe: the C runtime is linked
+# in (/MT rather than /MD, so no VC++ redistributable) and so is SDL3 (so no
+# SDL3.dll next to the exe). It needs a static SDL3, which the SDL3-devel-VC SDK
+# does not include -- build one first:
+#
+#     msvc\build-sdl3-static.bat
+#     nmake /f Makefile.msvc STATIC=1
+#
+# Objects and the runtime image go to their own directories, because /MT and
+# /MD objects must never be mixed in one link.
+!IFNDEF STATIC
+STATIC = 0
+!ENDIF
+
+!IF "$(STATIC)" == "1"
+SDL_INC  = /I"$(SDL3_STATIC_DIR)\include"
+# The Win32 libraries SDL3 itself calls into. With the DLL build these are the
+# DLL's problem; linking SDL statically makes them ours. This list is SDL's own
+# Libs.private from $(SDL3_STATIC_DIR)\lib\pkgconfig\sdl3.pc -- re-read it there
+# if a future SDL version fails to link.
+SDL_LIBS = "$(SDL3_STATIC_DIR)\lib\SDL3-static.lib" \
+	kernel32.lib user32.lib gdi32.lib winmm.lib imm32.lib ole32.lib \
+	oleaut32.lib version.lib uuid.lib advapi32.lib setupapi.lib \
+	shell32.lib dinput8.lib
+RT_RELEASE = /MT
+RT_DEBUG   = /MTd
+STATIC_SUFFIX = -static
+!ELSE
+SDL_INC  = /I"$(SDL3_DIR)\include"
+SDL_LIBS = "$(SDL3_DIR)\lib\x64\SDL3.lib" winmm.lib user32.lib shell32.lib
+RT_RELEASE = /MD
+RT_DEBUG   = /MDd
+STATIC_SUFFIX =
+!ENDIF
+
 !IF "$(CFG)" == "Debug"
-OUTDIR    = obj-msvc-debug
-CFG_CL    = /Od /MDd /Zi /DRANGECHECK /DINSTRUMENTED
+OUTDIR    = obj-msvc-debug$(STATIC_SUFFIX)
+CFG_CL    = /Od $(RT_DEBUG) /Zi /DRANGECHECK /DINSTRUMENTED
 CFG_LINK  = /DEBUG
 !ELSE
-OUTDIR    = obj-msvc
-CFG_CL    = /O2 /MD /Zi
+OUTDIR    = obj-msvc$(STATIC_SUFFIX)
+CFG_CL    = /O2 $(RT_RELEASE) /Zi
 CFG_LINK  = /DEBUG /OPT:REF /OPT:ICF
 !ENDIF
 
-RUNDIR = run-msvc
+RUNDIR = run-msvc$(STATIC_SUFFIX)
 
 # /TC              compile as C (the tree is C, and several files would not
 #                  survive the C++ front end's stricter rules)
@@ -55,7 +95,7 @@ RUNDIR = run-msvc
 # is safe at /O2 without one. (See Makefile.sdl3 for why gcc needs
 # -fno-strict-aliasing.)
 CFLAGS = /nologo /TC /MP $(CFG_CL) \
-	/I. /Imsvc\compat /I"$(SDL3_DIR)\include" \
+	/I. /Imsvc\compat $(SDL_INC) \
 	/FImsvc_compat.h \
 	/DWIN32 /D_WIN32 /DSDL3 /DDOGS \
 	/D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_DEPRECATE \
@@ -63,7 +103,7 @@ CFLAGS = /nologo /TC /MP $(CFG_CL) \
 	/wd4996 /wd4244 /wd4267 /wd4133 /wd4047 /wd4022 /wd4024 /wd4028 \
 	/wd4029 /wd4090 /wd4101 /wd4102 /wd4013 /wd4716
 
-LIBS = "$(SDL3_DIR)\lib\x64\SDL3.lib" winmm.lib user32.lib shell32.lib
+LIBS = $(SDL_LIBS)
 LDFLAGS = /nologo /SUBSYSTEM:CONSOLE $(CFG_LINK)
 
 EXE = $(OUTDIR)\smack.exe
@@ -127,17 +167,22 @@ $(OUTDIR):
 $(EXE): $(OUTDIR) $(OBJS)
 	link $(LDFLAGS) $(OBJS) $(LIBS) /OUT:$(EXE)
 
-# The .exe, SDL3.dll and smack.wad must sit together: D_DoomExeDir() derives
-# the data directory from argv[0].
+# smack.exe and smack.wad must sit together: D_DoomExeDir() derives the data
+# directory from argv[0]. The shared build needs SDL3.dll alongside them too;
+# the STATIC=1 build has SDL3 inside the exe and needs no DLL at all.
 runimage: $(EXE)
 	@if not exist $(RUNDIR) mkdir $(RUNDIR)
 	copy /y $(EXE) $(RUNDIR)\smack.exe >nul
+!IF "$(STATIC)" != "1"
 	copy /y "$(SDL3_DIR)\lib\x64\SDL3.dll" $(RUNDIR)\SDL3.dll >nul
+!ENDIF
 	copy /y smack.wad $(RUNDIR)\smack.wad >nul
 	@echo Built $(RUNDIR)\smack.exe
 
 clean:
 	@if exist obj-msvc rmdir /s /q obj-msvc
 	@if exist obj-msvc-debug rmdir /s /q obj-msvc-debug
+	@if exist obj-msvc-static rmdir /s /q obj-msvc-static
+	@if exist obj-msvc-debug-static rmdir /s /q obj-msvc-debug-static
 
 .PHONY: all clean runimage

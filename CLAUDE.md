@@ -106,6 +106,24 @@ does each gcc makefile — four lists to update when adding a `.c` file. The
 vcxproj is generated from `Makefile.msvc`'s `OBJS`, so regenerate rather than
 hand-edit if you add many files at once.
 
+**Standalone single-file build:** `nmake /f Makefile.msvc STATIC=1` (or the
+**ReleaseStatic** configuration in the IDE) links both the CRT (`/MT`) and SDL3
+into the exe, so it imports only Windows' own system DLLs — no SDL3.dll, no
+VC++ redistributable. It needs a static SDL3, which the SDL3-devel-VC SDK does
+not ship; `msvc\build-sdl3-static.bat` fetches the matching SDL source and
+builds one into `C:\Source\SDL3-static` (override with `SDL3_STATIC_DIR`).
+Things that matter here:
+- Static and shared objects **must not be mixed in one link** (`/MT` vs `/MD`
+  means two separate CRT heaps), so `STATIC=1` uses its own `obj-msvc-static\`
+  and `run-msvc-static\`. Don't collapse them.
+- SDL must be built with the **same** CRT model — hence the script's
+  `-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded` plus
+  `-DCMAKE_POLICY_DEFAULT_CMP0091=NEW` (without the policy, the setting is
+  silently ignored).
+- The Win32 libraries the static link needs are SDL's, not ours: the list comes
+  from `Libs.private` in `$(SDL3_STATIC_DIR)\lib\pkgconfig\sdl3.pc`. Re-read it
+  there if a future SDL version fails to link rather than guessing.
+
 MSVC specifics worth knowing:
 - **`msvc\compat\`** supplies what MSVC lacks: `unistd.h` and `sys/time.h`
   stubs (on the include path for this build only), plus `msvc_compat.h`, which

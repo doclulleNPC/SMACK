@@ -69,9 +69,28 @@ Or open `msvc\SMACK.sln` and press F7. Either way the runtime image lands in
 `run-msvc\`. Set an `SDL3_DIR` environment variable (or pass `SDL3_DIR=...` to
 nmake) if your SDK is not at `C:\Source\SDL3`.
 
-The MSVC build links the dynamic CRT, so it needs the Visual C++ 2015-2022
-redistributable on machines that lack it; the mingw build has no such
-dependency.
+By default the MSVC build links the dynamic CRT and SDL3.dll, so it needs the
+Visual C++ redistributable and the DLL alongside the exe.
+
+#### Standalone single-file exe
+
+`STATIC=1` links both the C runtime and SDL3 into the executable, giving a
+`smack.exe` that runs on a stock Windows install with no DLLs beside it and no
+redistributable — it imports nothing but Windows' own system libraries. It needs
+a static SDL3, which the SDL3-devel-VC SDK does not ship, so build one first
+(once per SDL version, takes a few minutes):
+
+```
+msvc\build-sdl3-static.bat            # fetches + builds SDL3 -> C:\Source\SDL3-static
+nmake /f Makefile.msvc STATIC=1       # -> run-msvc-static\smack.exe
+```
+
+In the IDE, pick the **ReleaseStatic** configuration. Either way you get
+`run-msvc-static\` containing just `smack.exe` and `smack.wad`; add your IWAD
+and it is portable.
+
+The mingw build remains dynamically linked against SDL3.dll (though it needs no
+redistributable, since it uses the always-present `msvcrt.dll`).
 
 ## Running
 

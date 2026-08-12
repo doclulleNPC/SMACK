@@ -35,10 +35,8 @@ objdebug-win/
 run-win/
 
 # MSVC / Visual Studio 2019 build output — see Makefile.msvc, msvc/SMACK.sln
-obj-msvc/
-obj-msvc-debug/
-obj-msvc-ide/
-run-msvc/
+obj-msvc*/
+run-msvc*/
 .vs/
 *.vcxproj.user
 *.pdb
