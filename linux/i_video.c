@@ -174,11 +174,19 @@ static void post_key_event(SDL_Keycode k, boolean down)
   D_PostEvent(&ev);
 }
 
+// Mouse buttons are *state*, not edges: G_Responder assigns
+// mousebuttons[n] = ev->data1 & bit on every ev_mouse, so each event must
+// carry the full current mask. Two bugs used to break holding a button:
+// motion events hardcoded data1 = 0, which released every mouse button as
+// soon as you moved (so fire never repeated), and post_mouse_button ignored
+// its `down` argument, so a release looked identical to a press.
+static int mouse_button_state;
+
 static void post_mouse_motion(int dx, int dy)
 {
   event_t ev;
   ev.type  = ev_mouse;
-  ev.data1 = 0;
+  ev.data1 = mouse_button_state;
   ev.data2 = dx << 2;
   ev.data3 = -(dy << 2);
   D_PostEvent(&ev);
@@ -187,12 +195,19 @@ static void post_mouse_motion(int dx, int dy)
 static void post_mouse_button(int sdl_button, boolean down)
 {
   int mask = 0;
+  event_t ev;
+
   if (sdl_button == SDL_BUTTON_LEFT)   mask |= 1;
   if (sdl_button == SDL_BUTTON_RIGHT)  mask |= 2;
   if (sdl_button == SDL_BUTTON_MIDDLE) mask |= 4;
-  event_t ev;
+
+  if (down)
+    mouse_button_state |= mask;
+  else
+    mouse_button_state &= ~mask;
+
   ev.type  = ev_mouse;
-  ev.data1 = mask;
+  ev.data1 = mouse_button_state;
   ev.data2 = ev.data3 = 0;
   D_PostEvent(&ev);
 }

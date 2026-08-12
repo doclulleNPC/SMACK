@@ -479,15 +479,21 @@ byte *R_GetColumn(int tex, int col)
   return texturecomposite2[tex] + ofs;
 }
 
-// R_GetColumnMasked: posted column for masked (2s mid-texture) draws. Keeps the
-// vanilla raw-for-single-patch / composite-for-multipatch behaviour.
+// R_GetColumnMasked: posted column for masked (2s mid-texture) draws.
+//
+// Always the composite. It used to shortcut to the raw patch lump for
+// single-patched columns, the way vanilla does, but that is no longer valid
+// here: R_GenerateLookup assigns texturecolumnofs[x] unconditionally (it is an
+// offset into the composite block for *every* column, since this tree
+// composites every column rather than only multipatched ones), while
+// texturecolumnlump[x] still names the source patch for single-patched
+// columns. Pairing the two read at a composite-relative offset inside the
+// patch lump -- arbitrary bytes, then interpreted as a posted column, which
+// drew vertical stripes of garbage down the screen wherever a 2s middle
+// texture (fence, grate, bars) came from a single patch.
 byte *R_GetColumnMasked(int tex, int col)
 {
-  int lump = texturecolumnlump[tex][col &= texturewidthmask[tex]];
-  int ofs  = texturecolumnofs[tex][col];
-
-  if (lump > 0)
-    return (byte *) W_CacheLumpNum(lump, PU_CACHE) + ofs;
+  int ofs = texturecolumnofs[tex][col &= texturewidthmask[tex]];
 
   if (!texturecomposite[tex])
     R_GenerateComposite(tex);
