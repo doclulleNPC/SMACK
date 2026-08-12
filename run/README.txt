@@ -1,102 +1,136 @@
-SMMU — Smack My Marine Up
-==========================
+SMACK!
+======
 
-Linux SDL3 build. Files in this directory are a self-contained run-time
-image: just `cd run && ./smmu ...` and you're playing.
+This is the runtime directory. Every build in the repository -- Linux, Windows
+(mingw-w64) and Windows (Visual Studio) -- drops its output here, so whatever
+you built last is what you run.
+
+The binary works out where its data lives from its own path (argv[0]), so
+smack/smack.exe, smack.wad and SDL3.dll must stay together in this folder.
+
 
 Contents
 --------
 
-  smmu            the 7.4 MB ELF binary, SDL3 statically linked. Only
-                  libc/libm are dynamic (standard system libs).
-  smmu.wad        SMMU's own PWAD (symlink to ../smmu.wad -- it must
-                  live in the same directory as the binary because
-                  D_DoomExeDir() builds the path from argv[0]).
-  DOOM2.WAD       DOOM II retail IWAD (Episode 1-3 + Secret).
-  DOOM.WAD        DOOM 1 retail IWAD (4 episodes).
-  doom1.wad       DOOM 1 shareware IWAD (Episode 1 only).
-  hubtest.wad     test WAD for hub-level transitions.
-  smmutest.wad    test WAD for engine features.
+  smack           Linux binary (built by `make -f Makefile.sdl3`)
+  smack.exe       Windows binary (Makefile.mingw, Makefile.msvc or the VS
+                  solution). The Linux and Windows binaries coexist here;
+                  two different *Windows* builds overwrite each other.
+  SDL3.dll        Windows only, and only for the dynamically-linked builds.
+                  The `nmake /f Makefile.msvc STATIC=1` build has SDL3 inside
+                  the .exe and needs no DLL at all.
+  smack.wad       SMACK's own PWAD. Required. On Linux this is a symlink to
+                  ../smack.wad; on Windows it is a copy.
+  smack.bat       Windows convenience launcher (see below).
+  smack.cfg       your settings. Written on exit, created on first run.
+  savegames       your saves, if you started SMACK from this directory.
+
+You supply your own IWAD -- none is included.
+
 
 Quick start
 -----------
 
+Linux:
+
   cd run
-  ./smmu -iwad DOOM2.WAD                # start DOOM II
-  ./smmu -iwad doom1.wad                # DOOM 1 shareware
-  ./smmu -iwad DOOM2.WAD -warp 1        # jump straight to MAP01
-  ./smmu -iwad DOOM2.WAD -skill 4       # Ultra-Violence from the start
+  ./smack -iwad DOOM2.WAD             # DOOM II
+  ./smack -iwad doom1.wad -warp 1     # shareware, straight to E1M1
+  ./smack -iwad DOOM2.WAD -skill 4    # Ultra-Violence
 
-Common flags
-------------
+Windows:
 
-  -iwad FILE      which IWAD to use (REQUIRED on first run; SMMU
-                  auto-detects mode from the IWAD header).
-  -warp N         jump to map N on start.
-  -skill N        1=ITYTD  2=HNTR  3=HMP  4=UV  5=NM.
-  -fast           monsters move and attack faster.
-  -respawn        monsters respawn after death.
-  -noload         skip the "wadfile_1/2" preinclude from smmu.cfg
-                  (handy when the defaults point at a stale path).
-  -nosound        skip sound system init.
-  -nomusic        skip music system init.
-  -nodraw         skip video init entirely (server-style smoke test).
-  -timedemo FILE  play a demo/lmp as fast as possible; prints stats.
-  -playdemo FILE  play a demo at normal speed.
+  cd run
+  smack.exe -iwad DOOM2.WAD
+  smack.bat -warp 1 -skill 4          # same thing; smack.bat cd's here first
 
-In-game controls (defaults)
----------------------------
+Drop an IWAD into this folder and plain `./smack` (or double-clicking
+smack.bat) is enough -- see the search order below.
 
-  arrows / WASD   move / turn
-  Ctrl            fire
-  Space           use / open doors
-  , / .           strafe left/right
-  1-7             select weapon
-  F1              help screen
-  F2              save game
-  F3              load game
-  F4              sound volume
-  F5              gamma correction
-  F6              quick save
-  F7              quick load
-  F8              toggle message scroll
-  F9              quick load
-  F10             quit
-  F11             gamma down
-  F12             gamma up
-  Tab             automap
-  `               console (FraggleScript enabled)
-  Pause           pause game
 
-Files written to $HOME
-----------------------
+Where SMACK looks for the IWAD
+------------------------------
 
-SMMU writes `~/.smmu/smmu.cfg` for user settings and `~/.smmu/savegames/`
-for save slots on first run.
+In order, stopping at the first hit (FindIWADFile() in d_main.c):
 
-System requirements
--------------------
+  1. -iwad, if you passed it.
+       -iwad <file>  uses that file directly.
+       -iwad <dir>   searches that directory for the standard names below.
+       -iwad <name>  a bare name with no path is remembered as a custom name
+                     and looked for in steps 2-3 instead of the standard ones.
+       A missing ".wad" extension is added automatically.
+  2. The current working directory, then the directory containing the binary.
+     (These are the same thing when you `cd run` first, which is why that is
+     the recommended way to launch.)
+  3. The DOOMWADDIR environment variable, then HOME. Either may name a file
+     directly or a directory to search.
 
-  Linux x86_64 (3.2+)
-  X11 or Wayland (SDL3 picks automatically), or run with SDL_VIDEODRIVER=dummy
-  ~50 MB disk, ~80 MB RAM
-  A pulseaudio / pipewire / oss audio stack if you want sound.
+Within steps 2 and 3 the standard IWAD names are tried in this order:
 
-Known issues
-------------
+    doom2f.wad  doom2.wad  plutonia.wad  tnt.wad  doom.wad  doom1.wad
 
-  - Sound: linux/i_sound.c opens an SDL3 audio stream but currently
-    plays silence. Wire up SDL3_mixer if you want SFX/music.
-  - The "smmu.wad" symlink must resolve relative to the binary;
-    running from a different cwd without the symlink triggers
-    D_DoomExeName's hard-coded path lookup.
-  - Audio init can deadlock on some headless setups -- SDL_AUDIODRIVER=dummy
-    bypasses it.
-  - Render scale defaults to 1x (320x200 native). On systems with
-    tight memory you can stay there; for bigger windows set
-    SMMU_SCALE=2 (640x400) or SMMU_SCALE=4 (1280x800) before launch.
-  - SMMU itself needs ~100 MB RSS once it has loaded a WAD. On a
-    6 GB system with several browsers / AI tools / dev tooling
-    open, the Linux OOM-killer can grab SMMU's first 5-second
-    "load everything" pass. If you see "Killed" with no other
-    output, free ~500 MB of RAM (close a browser tab) and try again.
+so if several IWADs sit side by side, DOOM II wins over Plutonia, TNT, and
+DOOM 1. Pass -iwad explicitly when you want a specific one.
+
+Note the names in that list are lowercase. Windows does not care, but on Linux
+the filesystem is case-sensitive: a file called DOOM2.WAD will NOT be found by
+the automatic search. Either rename it to doom2.wad or name it with -iwad.
+
+If nothing is found, SMACK exits with "IWAD not found".
+
+
+Files SMACK writes
+------------------
+
+  smack.cfg    next to the binary, i.e. in this directory. Holds every
+               console variable: screen size, HUD style, key bindings,
+               automap options, gamma, volumes. Written on a clean exit,
+               so quit properly rather than killing the process.
+  savegames/   in the CURRENT directory, not necessarily next to the binary.
+               Use -save DIR to put them somewhere specific.
+  tranmap.dat  a cached translucency table, regenerated if deleted.
+
+
+Display
+-------
+
+Rendering is always hi-res 640x400. The window can be magnified on top of
+that; in order of precedence:
+
+  -geom 1280x800     explicit window size
+  -2 / -3 / -4       2x, 3x or 4x
+  SMACK_SCALE=N      environment variable
+  (default)          1x, a 640x400 window
+
+The window size is not saved in smack.cfg -- it is decided at each launch.
+
+Screen size / HUD is the "screen size" slider in the menu (cvar screensize,
+0-11): 0-7 give a windowed view with the status bar, 8 is fullscreen with the
+classic text overlay, 9 and 10 are a graphical HUD at full and half size, and
+11 is the vanilla status bar at half size.
+
+
+Sound
+-----
+
+Sound effects and music both work. Music is authentic OPL3 (Adlib) synthesis
+using the IWAD's own GENMIDI patches -- no soundfont or external synth needed.
+Use -nosound / -nomusic to skip either, or SDL_AUDIODRIVER=dummy for a silent
+headless run.
+
+
+Controls
+--------
+
+Defaults are the classic Doom ones: Ctrl fires, Space uses, Alt strafes,
+Shift runs, Tab is the automap, and the backtick key (`) opens the console.
+Everything is rebindable in Options -> key bindings, and bindings persist in
+smack.cfg.
+
+
+More
+----
+
+  docs/PARAMETERS.md    every command-line option
+  docs/CHANGES.md       what this fork changed
+  ../README.md          build instructions for all three toolchains

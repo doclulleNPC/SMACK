@@ -163,8 +163,11 @@ OBJS = \
 EXE = $(O)/smack.exe
 
 # runtime image: the .exe, SDL3.dll and smack.wad must sit together, because
-# D_DoomExeDir() derives the data directory from argv[0].
-RUNDIR = run-win
+# D_DoomExeDir() derives the data directory from argv[0]. Every build in this
+# repo -- Linux, mingw and MSVC -- drops its output into this one directory.
+# The Linux binary is `smack` and the Windows one `smack.exe`, so they coexist;
+# two *Windows* builds do overwrite each other's smack.exe.
+RUNDIR = run
 
 all: $(EXE) run
 

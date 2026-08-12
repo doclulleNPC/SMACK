@@ -7,6 +7,8 @@ objdebug/
 
 # Runtime binaries / symlinks produced by the `run` target
 run/smack
+run/smack.exe
+run/SDL3.dll
 run/smmu
 run/smmu_release
 run/smack.wad
@@ -16,6 +18,11 @@ run/smmu.wad
 run/DOOM.WAD
 run/DOOM2.WAD
 run/doom1.wad
+run/doom.wad
+run/doom2.wad
+run/plutonia.wad
+run/tnt.wad
+run/doom2f.wad
 /DOOM.WAD
 /DOOM2.WAD
 /doom1.wad
@@ -32,12 +39,11 @@ run/tranmap.dat
 # Windows (mingw-w64) build output — see Makefile.mingw
 obj-win/
 objdebug-win/
-run-win/
 
 # MSVC / Visual Studio 2019 build output — see Makefile.msvc, msvc/SMACK.sln
 obj-msvc*/
-run-msvc*/
 .vs/
 *.vcxproj.user
 *.pdb
 *.ilk
+run/savegames/

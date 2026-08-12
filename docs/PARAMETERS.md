@@ -1,6 +1,6 @@
-# SMMU command-line parameters
+# SMACK! command-line parameters
 
-Every command-line parameter recognized by this SMMU build (enumerated from the
+Every command-line parameter recognized by this SMACK! build (enumerated from the
 `M_CheckParm` calls in the source). Parameters shown as `-foo VALUE` consume the
 following argument; the rest are on/off flags. Music and SFX are **on by default**.
 
@@ -13,7 +13,7 @@ the IWAD and `smack.wad` live).
 
 | Parameter | Description |
 |---|---|
-| `-iwad FILE` | Which IWAD to use (`DOOM.WAD`, `DOOM2.WAD`, `doom1.wad`, …). Required on first run; SMMU auto-detects the game mode from the IWAD. |
+| `-iwad FILE` | Which IWAD to use (`DOOM.WAD`, `DOOM2.WAD`, `doom1.wad`, …). Required on first run; SMACK! auto-detects the game mode from the IWAD. |
 | `-file WAD [WAD …]` | Load one or more PWADs on top of the IWAD. (There is **no** `-wad`.) |
 | `-deh FILE` / `-bex FILE` | Load a DeHackEd / BEX patch. |
 | `-dehout FILE` / `-bexout FILE` | Dump the DeHackEd/BEX processing log to FILE (debugging). |

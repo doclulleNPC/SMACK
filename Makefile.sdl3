@@ -1,6 +1,7 @@
 ############################################################################
-# SMMU SDL3 Linux Makefile
-# Modernized from SMMU 3.21 (1999) - Linux SDL3 backend
+# SMACK! SDL3 Linux Makefile
+# Modernized from SMMU 3.21 (1999) - Linux SDL3 backend. See Makefile.mingw
+# and Makefile.msvc for the Windows builds.
 
 MODE    = RELEASE
 O       = $(O_$(MODE))
@@ -136,7 +137,8 @@ OBJS = \
 
 EXE = $(O)/smack
 
-# runtime image: the binary and everything needed to launch SMMU live here
+# runtime image: the binary and everything needed to launch SMACK! live here.
+# Shared with the Windows builds -- every toolchain deploys into run/.
 RUNDIR = run
 
 all: $(EXE) run

@@ -66,7 +66,7 @@ basename may not be used twice across those directories. **`Makefile.sdl3` and
 dependency) from the same sources:
 
 ```bash
-make -f Makefile.mingw          # -> obj-win/smack.exe, copied into run-win/
+make -f Makefile.mingw          # -> obj-win/smack.exe, copied into run/
 make -f Makefile.mingw debug    # -> objdebug-win/smack.exe
 make -f Makefile.mingw clean
 ```
@@ -79,7 +79,7 @@ mingw import library is needed. Pass `SDL3_DIR` as a Windows-style path
 (`C:/...`): the build is usually driven from MSYS/Git-Bash while the compiler is
 a Cygwin program, and the two disagree about what `/c/...` means.
 
-`run-win/` is the Windows runtime image (`smack.exe` + `SDL3.dll` +
+`run/` is the shared runtime image (`smack.exe` + `SDL3.dll` +
 `smack.wad`); it is populated by copying rather than symlinking. All three files
 must sit together because `D_DoomExeDir()` derives the data directory from
 `argv[0]`.
@@ -89,14 +89,14 @@ must sit together because `D_DoomExeDir()` derives the data directory from
 A second Windows toolchain, independent of the mingw one:
 
 ```
-nmake /f Makefile.msvc            # -> obj-msvc\smack.exe, copied into run-msvc\
+nmake /f Makefile.msvc            # -> obj-msvc\smack.exe, copied into run\
 nmake /f Makefile.msvc CFG=Debug  # -> obj-msvc-debug\
 nmake /f Makefile.msvc clean
 ```
 
 Run it from a VS2019 x64 developer prompt (or after `vcvars64.bat`); NMAKE, not
 GNU make. `msvc\SMACK.sln` is the IDE equivalent — same switches, output in
-`obj-msvc-ide\` — and both populate `run-msvc\`. Override the SDK with
+`obj-msvc-ide\` — and both populate `run\`. Override the SDK with
 `SDL3_DIR=...` (nmake) or an `SDL3_DIR` environment variable (IDE). This build
 wants the **MSVC** SDL3 package, since it links `SDL3.lib` properly rather than
 going straight at the DLL like the mingw build does.
@@ -114,8 +114,10 @@ not ship; `msvc\build-sdl3-static.bat` fetches the matching SDL source and
 builds one into `C:\Source\SDL3-static` (override with `SDL3_STATIC_DIR`).
 Things that matter here:
 - Static and shared objects **must not be mixed in one link** (`/MT` vs `/MD`
-  means two separate CRT heaps), so `STATIC=1` uses its own `obj-msvc-static\`
-  and `run-msvc-static\`. Don't collapse them.
+  means two separate CRT heaps), so `STATIC=1` compiles into its own
+  `obj-msvc-static\`. Keep those object directories separate. They do share the
+  one `run\` output directory, though, so a static and a shared build overwrite
+  each other's `smack.exe` there — as do the mingw and MSVC builds.
 - SDL must be built with the **same** CRT model — hence the script's
   `-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded` plus
   `-DCMAKE_POLICY_DEFAULT_CMP0091=NEW` (without the policy, the setting is
@@ -182,7 +184,8 @@ committed (id copyright). `docs/PARAMETERS.md` is the full flag list;
 - **Config persistence:** all console/config variables (screensize, HUD, key bindings, automap options, gamma, volumes, …) are written to `run (next to the binary)/smack.cfg` on clean exit via `M_SaveDefaults`, called from `I_Quit` (atexit). The **window size is NOT persisted** — it derives from `SMACK_SCALE` each launch (`win_w`/`win_h` in `linux/i_video.c` aren't config vars).
 - **Palette note:** `I_SetPalette` (`linux/i_video.c`) must NOT shift gamma values `>> 2` — that was for the VGA 6-bit DAC and makes SDL's 8-bit output ¼ brightness (the "everything is dark" bug). It writes full 0–255 values.
 - `SDL_VIDEODRIVER=dummy` / `SDL_AUDIODRIVER=dummy` — headless smoke tests; `-nodraw`/`-nosound`/`-nomusic` do the same at the game level.
-- User config and saves live in `run (next to the binary)/` (`smack.cfg`, `savegames/`).
+- **Config and saves land in different places**, which matters when launching from elsewhere: `smack.cfg` goes next to the *binary* (`D_DoomExeDir()`), while savegames default to the *current working directory* (`basesavegame` is set to `"."` in `d_main.c`, overridable with `-save DIR`). They coincide only because the documented way to launch is `cd run` first.
+- **IWAD search order** (`FindIWADFile()` in `d_main.c`): `-iwad` (a file, a directory to search, or a bare custom name) → the current directory, then the binary's directory → `$DOOMWADDIR`, then `$HOME`. Within a directory the standard names are tried in the order `doom2f.wad`, `doom2.wad`, `plutonia.wad`, `tnt.wad`, `doom.wad`, `doom1.wad`, so DOOM II wins when several sit side by side. Those names are lowercase and the comparison is a plain `stat()`, so on Linux an uppercase `DOOM2.WAD` is **not** found by the automatic search — only via explicit `-iwad`.
 
 Sound is fully implemented. SFX: `linux/i_sound.c` mixes Doom's 8-bit DMX lumps into a 16-bit stereo SDL3 stream via a pull callback (`snd_card` set on init). Music: authentic **OPL3 synthesis** — Nuked-OPL3 (`opl3.c`) + a GENMIDI voice player (`i_opl.c`) + a MUS/MIDI sequencer (`i_mus.c`), rendered into the same audio callback and mixed over the SFX. `I_InitMusic` (called from `S_Init`) loads the IWAD `GENMIDI` and sets `mus_card`. See `docs/LEGACY_FIXES.md` §3/§10.
 

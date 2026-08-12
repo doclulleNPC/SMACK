@@ -1,4 +1,4 @@
-# SMMU — changes since the original 1999 tree
+# SMACK! — changes since the original SMMU 1999 tree
 
 A high-level summary of everything done to modernize this SMMU 3.21 checkout, from
 "it doesn't build" to a fully playable 64-bit Linux/SDL3 port with sound, music, and

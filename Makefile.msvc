@@ -76,7 +76,10 @@ CFG_CL    = /O2 $(RT_RELEASE) /Zi
 CFG_LINK  = /DEBUG /OPT:REF /OPT:ICF
 !ENDIF
 
-RUNDIR = run-msvc$(STATIC_SUFFIX)
+# Every build in this repo -- Linux, mingw and MSVC, static or shared -- drops
+# its output into this one directory. Note that means two Windows builds
+# overwrite each other's smack.exe; only the object directories are separate.
+RUNDIR = run
 
 # /TC              compile as C (the tree is C, and several files would not
 #                  survive the C++ front end's stricter rules)

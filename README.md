@@ -46,13 +46,13 @@ Requires a mingw-w64 gcc and an SDL3 SDK (the MSVC `SDL3-devel-VC` package works
 Cygwin/MSYS runtime dependency.
 
 ```sh
-make -f Makefile.mingw                                   # -> obj-win/smack.exe, copied into run-win/
+make -f Makefile.mingw                                   # -> obj-win/smack.exe, copied into run/
 make -f Makefile.mingw CC=x86_64-w64-mingw32-gcc SDL3_DIR=C:/SDL3
 make -f Makefile.mingw clean
 ```
 
-`run-win/` gets `smack.exe`, `SDL3.dll` and `smack.wad`; keep them together and
-drop your IWAD in beside them.
+`run/` gets `smack.exe`, `SDL3.dll` and `smack.wad`; keep them together and drop
+your IWAD in beside them. Every build in this repo deploys into `run/`.
 
 ### Windows (x64) with Visual Studio 2019
 
@@ -60,13 +60,13 @@ Requires VS2019 (Community or Build Tools) and the MSVC SDL3 SDK
 (`SDL3-devel-VC`). From a VS2019 x64 developer prompt:
 
 ```
-nmake /f Makefile.msvc                  # -> obj-msvc\smack.exe, copied into run-msvc\
+nmake /f Makefile.msvc                  # -> obj-msvc\smack.exe, copied into run\
 nmake /f Makefile.msvc CFG=Debug
 nmake /f Makefile.msvc clean
 ```
 
 Or open `msvc\SMACK.sln` and press F7. Either way the runtime image lands in
-`run-msvc\`. Set an `SDL3_DIR` environment variable (or pass `SDL3_DIR=...` to
+`run\`. Set an `SDL3_DIR` environment variable (or pass `SDL3_DIR=...` to
 nmake) if your SDK is not at `C:\Source\SDL3`.
 
 By default the MSVC build links the dynamic CRT and SDL3.dll, so it needs the
@@ -82,12 +82,12 @@ a static SDL3, which the SDL3-devel-VC SDK does not ship, so build one first
 
 ```
 msvc\build-sdl3-static.bat            # fetches + builds SDL3 -> C:\Source\SDL3-static
-nmake /f Makefile.msvc STATIC=1       # -> run-msvc-static\smack.exe
+nmake /f Makefile.msvc STATIC=1       # -> run\smack.exe (standalone)
 ```
 
 In the IDE, pick the **ReleaseStatic** configuration. Either way you get
-`run-msvc-static\` containing just `smack.exe` and `smack.wad`; add your IWAD
-and it is portable.
+`run\smack.exe` with no DLL beside it; copy it and `smack.wad` anywhere, add
+your IWAD, and it is portable.
 
 The mingw build remains dynamically linked against SDL3.dll (though it needs no
 redistributable, since it uses the always-present `msvcrt.dll`).
