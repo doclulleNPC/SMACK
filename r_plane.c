@@ -162,7 +162,19 @@ static void R_MapPlane(int y, int x1, int x2)
 
   if (!(ds_colormap = fixedcolormap))
     {
-      index = distance >> LIGHTZSHIFT;
+      // Floors and ceilings pick one colormap per horizontal span, and their
+      // light varies with distance, i.e. down the screen -- so dither across
+      // rows, which is the axis their banding runs along.
+      if (r_dither)
+        {
+          unsigned fine = distance >> (LIGHTZSHIFT-2);
+          index = fine >> 2;
+          if ((fine & 3) > r_dithertable[y & 3])
+            index++;
+        }
+      else
+        index = distance >> LIGHTZSHIFT;
+
       if (index >= MAXLIGHTZ )
         index = MAXLIGHTZ-1;
       ds_colormap = planezlight[index];

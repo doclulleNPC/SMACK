@@ -979,6 +979,7 @@ menu_t menu_video =
     {it_slider,       "screen size",                  "screensize"},
     {it_toggle,       "hom detector flashes",         "r_homflash"},
     {it_toggle,       "translucency",                 "r_trans"},
+    {it_toggle,       "dither light levels",          "r_dither"},
     {it_variable,     "translucency percentage",      "r_tranpct"},
     
     {it_gap},
@@ -1217,6 +1218,7 @@ menu_t menu_weapons =
     {it_toggle,     "bfg type",                       "bfgtype"},
     {it_toggle,     "bobbing",                        "bobbing"},
     {it_toggle,     "recoil",                         "recoil"},
+    {it_toggle,     "switch on pickup",               "autoswitch"},
     {it_info,       FC_BRICK "fist/chainsaw switch"},
     {it_gap},
     {it_info,       FC_GOLD "weapon prefs."},

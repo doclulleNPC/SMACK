@@ -155,9 +155,16 @@ boolean P_GiveAmmo(player_t *player, ammotype_t ammo, int num)
 // The weapon name may have a MF_DROPPED flag ored in.
 //
 
+int weapon_autoswitch = 1;      // default on == vanilla
+
 boolean P_GiveWeapon(player_t *player, weapontype_t weapon, boolean dropped)
 {
   boolean gaveammo;
+  // Picking a weapon up feeds the playsim, so the preference is only honoured
+  // in ordinary single player -- during a netgame or a demo we always switch,
+  // exactly as vanilla does, so nothing desyncs.
+  boolean autoswitch = weapon_autoswitch || netgame ||
+                       demoplayback || demorecording;
 
   if (netgame && deathmatch!=2 && !dropped)
     {
@@ -179,8 +186,15 @@ boolean P_GiveWeapon(player_t *player, weapontype_t weapon, boolean dropped)
   gaveammo = weaponinfo[weapon].ammo != am_noammo &&
     P_GiveAmmo(player, weaponinfo[weapon].ammo, dropped ? 1 : 2);
 
-  return !player->weaponowned[weapon] ?
-    player->weaponowned[player->pendingweapon = weapon] = true : gaveammo;
+  if (!player->weaponowned[weapon])
+    {
+      player->weaponowned[weapon] = true;
+      if (autoswitch)
+        player->pendingweapon = weapon;
+      return true;
+    }
+
+  return gaveammo;
 }
 
 //

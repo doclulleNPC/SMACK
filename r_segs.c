@@ -364,7 +364,19 @@ static void R_RenderSegLoop (void)
           texturecolumn >>= FRACBITS;
 
           // calculate lighting
-          index = rw_scale>>(LIGHTSCALESHIFT+hires);  // killough 11/98
+          if (r_dither)
+            {
+              // Two extra bits of light precision, then an ordered dither
+              // across screen columns: within one light band the columns
+              // nearest the next band step up to it, so the seam between
+              // bands is broken up instead of showing as a hard edge.
+              unsigned fine = rw_scale>>(LIGHTSCALESHIFT+hires-2);
+              index = fine >> 2;
+              if ((fine & 3) > r_dithertable[rw_x & 3])
+                index++;
+            }
+          else
+            index = rw_scale>>(LIGHTSCALESHIFT+hires);  // killough 11/98
 
           if (index >=  MAXLIGHTSCALE )
             index = MAXLIGHTSCALE-1;

@@ -212,6 +212,120 @@ static void post_mouse_button(int sdl_button, boolean down)
   D_PostEvent(&ev);
 }
 
+// ---- gamepad --------------------------------------------------------------
+//
+// The engine already had the whole joystick path -- joyxmove/joyymove/
+// joybuttons, the ev_joystick case in G_Responder, the joyb_* bindings and the
+// "enable joystick" menu toggle -- but nothing ever opened a device or posted
+// an ev_joystick, so the option did nothing. This is that missing half.
+//
+// G_BuildTiccmd only ever tests joyxmove/joyymove for sign, so the stick is
+// reported digitally (-1/0/+1) outside a deadzone, like the DOS joystick did.
+
+extern int usejoystick;      // m_misc.c -- the "enable joystick" option
+extern int joystickpresent;  // linux/i_system.c
+
+static SDL_Gamepad   *gamepad;
+static SDL_JoystickID gamepad_id;
+
+#define JOY_DEADZONE 12000   // of 32767
+
+static void I_OpenGamepad(SDL_JoystickID which)
+{
+  if (gamepad)               // one is plenty
+    return;
+
+  if ((gamepad = SDL_OpenGamepad(which)))
+    {
+      const char *name = SDL_GetGamepadName(gamepad);
+      gamepad_id = which;
+      joystickpresent = 1;
+      printf("I_InitJoystick: %s\n", name ? name : "gamepad");
+    }
+}
+
+static void I_CloseGamepad(void)
+{
+  if (gamepad)
+    {
+      SDL_CloseGamepad(gamepad);
+      gamepad = NULL;
+      joystickpresent = 0;
+    }
+}
+
+void I_InitJoystick(void)
+{
+  int i, count = 0;
+  SDL_JoystickID *ids;
+
+  if (M_CheckParm("-nojoy"))
+    return;
+
+  if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD))
+    {
+      printf("I_InitJoystick: no gamepad subsystem (%s)\n", SDL_GetError());
+      return;
+    }
+
+  // devices already plugged in when we start; hotplug arrives as an event
+  if ((ids = SDL_GetGamepads(&count)))
+    {
+      for (i = 0; i < count && !gamepad; i++)
+        I_OpenGamepad(ids[i]);
+      SDL_free(ids);
+    }
+}
+
+// Sampled once per tic and posted as a single ev_joystick, because
+// G_Responder treats the event as complete state rather than as a change.
+static void I_PollGamepad(void)
+{
+  event_t ev;
+  int mask = 0, x = 0, y = 0;
+
+  if (!gamepad)
+    return;
+
+  if (usejoystick)
+    {
+      Sint16 ax = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTX);
+      Sint16 ay = SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTY);
+
+      if (ax < -JOY_DEADZONE || SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_LEFT))
+        x = -1;
+      else if (ax > JOY_DEADZONE || SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_RIGHT))
+        x = 1;
+
+      // negative y is forward, which is also the way SDL reports "stick up"
+      if (ay < -JOY_DEADZONE || SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_UP))
+        y = -1;
+      else if (ay > JOY_DEADZONE || SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_DOWN))
+        y = 1;
+
+      // Bits 0..3 are joystick buttons 0..3, which is what the joyb_*
+      // defaults bind to: fire, strafe, speed, use.
+      if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_SOUTH) ||
+          SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) > JOY_DEADZONE)
+        mask |= 1;
+      if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_WEST))
+        mask |= 2;
+      if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER))
+        mask |= 4;
+      if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_EAST) ||
+          SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER))
+        mask |= 8;
+    }
+  // when the option is off we still post, so buttons held at the moment it was
+  // switched off do not stay stuck down
+
+  ev.type  = ev_joystick;
+  ev.data1 = mask;
+  ev.data2 = x;
+  ev.data3 = y;
+  D_PostEvent(&ev);
+}
+
 // ---- I_StartTic / I_GetEvent ---------------------------------------------
 
 void I_GetEvent(void);
@@ -219,6 +333,7 @@ void I_GetEvent(void);
 void I_StartTic(void)
 {
   I_GetEvent();
+  I_PollGamepad();
   I_UpdateGrab();
 }
 
@@ -260,6 +375,15 @@ void I_GetEvent(void)
 
       case SDL_EVENT_MOUSE_BUTTON_UP:
         post_mouse_button(ev.button.button, false);
+        break;
+
+      case SDL_EVENT_GAMEPAD_ADDED:
+        I_OpenGamepad(ev.gdevice.which);
+        break;
+
+      case SDL_EVENT_GAMEPAD_REMOVED:
+        if (gamepad && ev.gdevice.which == gamepad_id)
+          I_CloseGamepad();
         break;
 
       case SDL_EVENT_WINDOW_RESIZED:
@@ -508,6 +632,8 @@ void I_InitGraphicsMode(void)
     usemouse = 0;
 
   I_CreateWindowAndRenderer();
+
+  I_InitJoystick();
 
   I_SetPalette(W_CacheLumpName("PLAYPAL", PU_CACHE));
   in_textmode = false;

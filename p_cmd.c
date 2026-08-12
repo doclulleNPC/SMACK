@@ -118,6 +118,11 @@ CONSOLE_NETVAR(autoaim, autoaim, cf_server, netcmd_autoaim) {}
 VARIABLE_BOOLEAN(weapon_recoil, &default_weapon_recoil, onoff);
 CONSOLE_NETVAR(recoil, weapon_recoil, cf_server, netcmd_recoil) {}
 
+// whether picking a weapon up switches to it. A local preference, not a
+// netvar: P_GiveWeapon ignores it in netgames and demos.
+VARIABLE_BOOLEAN(weapon_autoswitch, NULL, onoff);
+CONSOLE_VARIABLE(autoswitch, weapon_autoswitch, 0) {}
+
 // allow pushers
 
 VARIABLE_BOOLEAN(allow_pushers, &default_allow_pushers, onoff);
@@ -228,6 +233,7 @@ void P_AddCommands()
   C_AddCommand(bfgtype);
   C_AddCommand(autoaim);
   C_AddCommand(recoil);
+  C_AddCommand(autoswitch);
   C_AddCommand(pushers);
   C_AddCommand(varfriction);
   C_AddCommand(nukage);

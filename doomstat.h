@@ -327,6 +327,15 @@ extern int default_monsters_remember;
 extern int weapon_recoil;          // weapon recoil    // phares
 extern int default_weapon_recoil;
 
+// whether picking a weapon up switches to it (vanilla behaviour, default on).
+// A local preference, not a netvar: P_GiveWeapon only honours it in ordinary
+// single player, so demos and netgames keep vanilla pickup behaviour.
+extern int weapon_autoswitch;
+
+// dithered light levels -- see doomstat.c
+extern int r_dither;
+extern const unsigned char r_dithertable[4];
+
 extern int player_bobbing;  // whether player bobs or not   // phares 2/25/98
 extern int default_player_bobbing;  // killough 3/1/98: make local to each game
 

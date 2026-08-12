@@ -283,9 +283,23 @@ default_t defaults[] = {
 
   { // phares 2/25/98
     "player_bobbing",
-    &player_bobbing, NULL,      //sf: bobbing not needed for game sync 
+    &player_bobbing, NULL,      //sf: bobbing not needed for game sync
     1, {0,1}, dt_number, ss_weap, wad_no,
     "1 to enable player bobbing (view moving up/down slightly)"
+  },
+
+  {
+    "r_dither",
+    &r_dither, NULL,
+    1, {0,1}, dt_number, ss_none, wad_no,
+    "1 to dither light levels, smoothing the banding in shadows"
+  },
+
+  {
+    "weapon_autoswitch",
+    &weapon_autoswitch, NULL,
+    1, {0,1}, dt_number, ss_weap, wad_no,
+    "1 to switch to a weapon when you pick it up"
   },
 
   { // killough 3/1/98
@@ -1733,7 +1747,11 @@ void M_SaveDefaults (void)
   if (!defaults_loaded || !defaultfile)
     return;
 
-  sprintf(tmpfile, "%s/tmp%.5s.cfg", D_DoomExeDir(), D_DoomExeName());
+  // The temp file has to live beside the config it replaces (the ID0 data
+  // directory), not next to the executable: rename() below moves one onto the
+  // other, and keeping them in the same directory also stops a half-written
+  // tmpsmack.cfg being left in run/ if we die mid-save.
+  sprintf(tmpfile, "%s/tmp%.5s.cfg", D_DoomDataDir(), D_DoomExeName());
   NormalizeSlashes(tmpfile);
 
   errno = 0;
@@ -1754,7 +1772,13 @@ void M_SaveDefaults (void)
 
   for (blanks = 1, line = 0, dp = defaults; ; dp++, blanks = 0)
     {
-      int brackets = 0, value;
+      // intptr_t, not int: for a dt_string default this holds a char *, and
+      // truncating it to 32 bits produced a bogus pointer that crashed the
+      // fprintf("%s") below on the first string entry ("name"). That killed
+      // M_SaveDefaults partway through, so the rename() never ran and settings
+      // were never saved at all.
+      int brackets = 0;
+      intptr_t value;
 
       for (;line < comment && comments[line].line <= dp-defaults; line++)
 	if (*comments[line].text != '[' || (brackets = 1, config_help))
@@ -1801,15 +1825,19 @@ void M_SaveDefaults (void)
       // killough 11/98:
       // Write out original default if .wad file has modified the default
       
-      value = dp->modified ? dp->orig_default : (int) *dp->location;
+      // A string default's location points at a char *, so it must be read as
+      // one -- *dp->location would only fetch the low half of the pointer.
+      value = dp->modified ? dp->orig_default :
+              dp->isstr ? (intptr_t) *(char **) dp->location :
+                          (intptr_t) *dp->location;
 
       //jff 4/10/98 kill super-hack on pointer value
       // killough 3/6/98:
       // use spaces instead of tabs for uniform justification
 
-      if (!dp->isstr ? fprintf(f, "%-25s %5i\n", dp->name, 
-			       strncmp(dp->name, "key_", 4) ? value :
-			       I_DoomCode2ScanCode(value)) == EOF :
+      if (!dp->isstr ? fprintf(f, "%-25s %5i\n", dp->name,
+			       strncmp(dp->name, "key_", 4) ? (int) value :
+			       I_DoomCode2ScanCode((int) value)) == EOF :
 	  fprintf(f,"%-25s \"%s\"\n", dp->name, (char *) value) == EOF)
 	goto error;
     }

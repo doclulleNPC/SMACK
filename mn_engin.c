@@ -16,6 +16,7 @@
 #include "c_io.h"
 #include "c_runcmd.h"
 #include "d_main.h"
+#include "m_misc.h"    // M_SaveDefaults on menu close
 #include "g_game.h"
 #include "hu_over.h"
 #include "i_video.h"
@@ -778,8 +779,16 @@ void MN_PrevMenu()
 
 void MN_ClearMenus()
 {
+  boolean was_active = menuactive;
+
   menuactive = false;
   redrawsbar = redrawborder = true;  // need redraw
+
+  // Write the config out as soon as the menu closes, rather than only on a
+  // clean exit. Anything changed in the menus (screen size, HUD, key bindings,
+  // volumes, ...) then survives a crash or a killed process.
+  if (was_active)
+    M_SaveDefaults();
 }
 
 CONSOLE_COMMAND(mn_clearmenus, 0)

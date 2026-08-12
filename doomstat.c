@@ -101,6 +101,16 @@ int help_friends, default_help_friends;
 
 int flashing_hom;     // killough 10/98
 
+// Dithered light levels: blend between adjacent colormaps so the hard
+// seams between Doom's 32 light bands stop showing as bands in shadows.
+int r_dither = 1;
+
+// 4-entry ordered dither. Indexed by screen column for walls and by
+// screen row for floors/ceilings, because a colormap is chosen once per
+// column and once per span respectively -- which is also the axis the
+// banding runs along in each case.
+const unsigned char r_dithertable[4] = { 0, 2, 1, 3 };
+
 int doom_weapon_toggles; // killough 10/98
 
 int monkeys, default_monkeys;

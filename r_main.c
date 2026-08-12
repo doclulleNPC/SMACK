@@ -700,6 +700,8 @@ VARIABLE_BOOLEAN(r_precache, NULL,                  onoff);
 VARIABLE_BOOLEAN(showpsprites, NULL,                yesno);
 VARIABLE_BOOLEAN(stretchsky, NULL,                  onoff);
 VARIABLE_BOOLEAN(r_swirl, NULL,                     onoff);
+VARIABLE_BOOLEAN(r_dither, NULL,                    onoff);
+
 VARIABLE_BOOLEAN(general_translucency, NULL,        onoff);
 VARIABLE_INT(tran_filter_pct, NULL,             0, 100, NULL);
 VARIABLE_BOOLEAN(autodetect_hom, NULL,              yesno);
@@ -718,6 +720,7 @@ CONSOLE_VARIABLE(lefthanded, lefthanded, 0) {}
 CONSOLE_VARIABLE(r_blockmap, r_blockmap, 0) {}
 // CONSOLE_VARIABLE(r_flatskip, flatskip, 0) {}
 CONSOLE_VARIABLE(r_homflash, flashing_hom, 0) {}
+CONSOLE_VARIABLE(r_dither, r_dither, 0) {}
 CONSOLE_VARIABLE(r_planeview, visplane_view, 0) {}
 CONSOLE_VARIABLE(r_zoom, zoom, 0) {}
 CONSOLE_VARIABLE(r_precache, r_precache, 0) {}
@@ -768,6 +771,7 @@ void R_AddCommands()
    C_AddCommand(lefthanded);
    C_AddCommand(r_blockmap);
    C_AddCommand(r_homflash);
+   C_AddCommand(r_dither);
    C_AddCommand(r_planeview);
    C_AddCommand(r_zoom);
    C_AddCommand(r_precache);
