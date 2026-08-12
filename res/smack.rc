@@ -1,0 +1,13 @@
+/* SMACK! Windows resource script.
+ *
+ * Gives smack.exe its icon in Explorer, the taskbar and Alt-Tab. The window
+ * icon is set separately at runtime via SDL_SetWindowIcon (res/icon_rgba.h),
+ * which is what covers Linux, where there is no resource section.
+ *
+ * smack.ico is generated from tools/appicon.png by tools/make-icon.ps1 and is
+ * committed, so building needs no image tooling.
+ *
+ * Windows shows the icon with the numerically lowest resource ID, hence 1.
+ */
+
+1 ICON "smack.ico"

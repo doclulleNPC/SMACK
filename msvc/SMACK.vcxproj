@@ -307,6 +307,11 @@ copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run\ID0\smack.wad"</Command
     <ClInclude Include="compat\msvc_compat.h" />
     <ClInclude Include="compat\unistd.h" />
     <ClInclude Include="compat\sys\time.h" />
+    <ClInclude Include="..\res\icon_rgba.h" />
+  </ItemGroup>
+  <!-- the .exe icon; the in-window icon comes from res/icon_rgba.h at runtime -->
+  <ItemGroup>
+    <ResourceCompile Include="..\res\smack.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

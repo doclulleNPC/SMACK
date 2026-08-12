@@ -1,0 +1,25 @@
+[Desktop Entry]
+Type=Application
+Name=SMACK!
+GenericName=Doom source port
+Comment=Modernized SMMU 3.21 Doom source port with an SDL3 backend
+Exec=smack
+Icon=smack
+Terminal=false
+Categories=Game;ActionGame;
+Keywords=doom;fps;smmu;boom;mbf;
+
+# Desktop-menu entry for Linux. Not used by the game itself -- the in-window and
+# taskbar icon comes from SDL_SetWindowIcon (res/icon_rgba.h), which needs no
+# installation.
+#
+# To install for the current user:
+#
+#   install -Dm644 res/smack.png \
+#       ~/.local/share/icons/hicolor/256x256/apps/smack.png
+#   install -Dm644 res/smack.desktop ~/.local/share/applications/smack.desktop
+#   update-desktop-database ~/.local/share/applications 2>/dev/null || true
+#
+# Exec=smack assumes the binary is on PATH; otherwise use an absolute path, and
+# remember the engine resolves its data directory (ID0) from argv[0], so it must
+# stay beside smack.wad.

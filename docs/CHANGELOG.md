@@ -14,6 +14,19 @@ SDL3 Linux backend under `linux/`.
 
 ## 2026-08-12
 
+### Application icon
+
+- `res/smack.ico` (16/24/32/48/64/128/256, 32-bit with a real AND mask) is linked
+  into the Windows builds as a resource, so `smack.exe` is branded in Explorer, the
+  taskbar and Alt-Tab — mingw via `windres`, MSVC via `rc`, and the VS project via a
+  `ResourceCompile` item.
+- The **window** icon is set at runtime from `res/icon_rgba.h` via
+  `SDL_SetWindowIcon`, which is what gives Linux an icon at all (there is no
+  resource section to read one from) and covers the title bar on both platforms.
+- `res/smack.desktop` + `res/smack.png` for Linux desktop-menu integration.
+- Both artefacts are generated from `tools/appicon.png` by `tools/make-icon.ps1`
+  and committed, so an ordinary build needs no image tooling.
+
 ### Config saving, dithered lighting, weapon autoswitch, gamepad (`cc168a5`)
 
 - **Settings are saved again.** They never were, and the file location was a red

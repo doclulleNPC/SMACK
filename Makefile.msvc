@@ -122,6 +122,10 @@ LDFLAGS = /nologo /SUBSYSTEM:CONSOLE $(CFG_LINK)
 
 EXE = $(OUTDIR)\smack.exe
 
+# Windows resource: the .exe icon. Deliberately not part of OBJS -- it is not an
+# object file, and tools\check-sources.ps1 scans OBJS for source-list drift.
+RES = $(OUTDIR)\smack.res
+
 OBJS = \
 	$(OUTDIR)\i_main.obj    $(OUTDIR)\i_system.obj  $(OUTDIR)\i_video.obj   \
 	$(OUTDIR)\i_sound.obj   $(OUTDIR)\i_net.obj     $(OUTDIR)\p_info.obj    \
@@ -179,8 +183,12 @@ $(OUTDIR):
 	@if not exist $(OUTDIR) mkdir $(OUTDIR)
 	$(CC) $(CFLAGS) /Fo$(OUTDIR)\ /Fd$(OUTDIR)\smack.pdb /c $<
 
-$(EXE): $(OUTDIR) $(OBJS)
-	link $(LDFLAGS) $(OBJS) $(LIBS) /OUT:$(EXE)
+$(EXE): $(OUTDIR) $(OBJS) $(RES)
+	link $(LDFLAGS) $(OBJS) $(RES) $(LIBS) /OUT:$(EXE)
+
+$(RES): res\smack.rc res\smack.ico
+	@if not exist $(OUTDIR) mkdir $(OUTDIR)
+	rc /nologo /fo $(RES) res\smack.rc
 
 # smack.exe and smack.wad must sit together: D_DoomExeDir() derives the data
 # directory from argv[0]. The shared build needs SDL3.dll alongside them too;

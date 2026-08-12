@@ -57,6 +57,12 @@ CFLAGS_RELEASE = -O2
 
 DEPFLAGS       = -MMD -MP
 
+# Windows resource: gives the .exe its icon in Explorer / taskbar / Alt-Tab.
+# (The in-window icon is set at runtime from res/icon_rgba.h, which is also what
+# Linux uses -- see I_SetWindowIcon in linux/i_video.c.)
+WINDRES        = $(subst gcc,windres,$(CC))
+RES            = $(O)/smack_res.o
+
 # advapi32: d_iwad.c reads Steam's install path out of the registry
 LIBS_COMMON    = $(SDL_LIBS) -lm -lwinmm -ladvapi32
 LDFLAGS_COMMON = -mconsole
@@ -175,8 +181,11 @@ DATADIR = ID0
 
 all: $(EXE) run
 
-$(EXE): $(OBJS)
-	$(CC) $(OBJS) -o $@ $(LDFLAGS) $(LIBS_COMMON)
+$(EXE): $(OBJS) $(RES)
+	$(CC) $(OBJS) $(RES) -o $@ $(LDFLAGS) $(LIBS_COMMON)
+
+$(RES): res/smack.rc res/smack.ico | $(O)
+	$(WINDRES) -I res -O coff res/smack.rc -o $@
 
 # Windows has no dependable symlinks for this purpose, so the runtime image is
 # populated by copying.

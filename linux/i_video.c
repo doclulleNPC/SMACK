@@ -505,6 +505,27 @@ void I_ShutdownGraphics(void)
 
 extern boolean setsizeneeded;
 
+// The application icon, as RGBA generated from tools/appicon.png by
+// tools/make-icon.ps1. Windows additionally links res/smack.ico in as a
+// resource, which is what Explorer and the taskbar read; Linux has no
+// equivalent, so setting it here is the only way the window gets branded there.
+#include "../res/icon_rgba.h"
+
+static void I_SetWindowIcon(void)
+{
+  // SDL_SetWindowIcon copies the pixels, so the surface is ours to free -- and
+  // the array is static const anyway.
+  SDL_Surface *icon =
+    SDL_CreateSurfaceFrom(SMACK_ICON_SIZE, SMACK_ICON_SIZE,
+                          SDL_PIXELFORMAT_RGBA32,
+                          (void *) smack_icon_rgba, SMACK_ICON_SIZE * 4);
+  if (icon)
+    {
+      SDL_SetWindowIcon(window, icon);
+      SDL_DestroySurface(icon);
+    }
+}
+
 static void I_CreateWindowAndRenderer(void)
 {
   // The render framebuffer is SCREENWIDTH<<hires x SCREENHEIGHT<<hires
@@ -547,6 +568,7 @@ static void I_CreateWindowAndRenderer(void)
                               win_w, win_h,
                               SDL_WINDOW_RESIZABLE);
     if (!window) I_Error("SDL_CreateWindow failed: %s", SDL_GetError());
+    I_SetWindowIcon();
   }
 
   if (!renderer)
