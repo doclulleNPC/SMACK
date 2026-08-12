@@ -24,8 +24,16 @@ renderer and quality-of-life fixes.
   64-bit sprite clipping/projection, and more — all demo/netgame-safe.
 - **Settings actually persist** (the original never wrote its config).
 
-See [`docs/CHANGES.md`](docs/CHANGES.md) for the full summary and
-[`docs/LEGACY_FIXES.md`](docs/LEGACY_FIXES.md) for the source-backed fix log.
+Documentation:
+
+- [`docs/RUNNING.md`](docs/RUNNING.md) — how to run it: where files go, how the IWAD
+  is found, display / sound / input options.
+- [`docs/PARAMETERS.md`](docs/PARAMETERS.md) — every command-line switch.
+- [`docs/CHANGES.md`](docs/CHANGES.md) — what this fork adds, grouped by topic.
+- [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — every change since vanilla SMMU, in date
+  order.
+- [`docs/LEGACY_FIXES.md`](docs/LEGACY_FIXES.md) — the source-backed fix log
+  (symptom → root cause → fix → files).
 
 ## Building
 

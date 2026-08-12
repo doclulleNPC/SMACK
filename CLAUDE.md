@@ -197,8 +197,10 @@ cd run && ./smack -iwad DOOM2.WAD -file X.wad # load a PWAD — the flag is -fil
 ```
 
 An IWAD (`DOOM.WAD`, `DOOM2.WAD`, `doom1.wad`) is required on first run; none is
-committed (id copyright). `docs/PARAMETERS.md` is the full flag list;
-`run/README.txt` is the shorter user-facing version. Useful environment/config knobs:
+committed (id copyright). `docs/PARAMETERS.md` is the full flag list and
+`docs/RUNNING.md` is the player-facing guide (files, IWAD search order, display /
+sound / input options); it used to live at `run/README.txt`. `docs/CHANGELOG.md`
+records every change since vanilla SMMU in date order. Useful environment/config knobs:
 
 - Rendering is always hi-res 640x400 (`hires=1` in `linux/i_video.c`; lowres support and its video-mode menu toggle have been removed, though the renderer still keys off `SCREENWIDTH<<hires`). Window size is decided at startup in `linux/i_video.c` by, in order of precedence, **`-geom WxH` → `-4`/`-3`/`-2` → `SMACK_SCALE=N` → 1x** (a 640x400 window); the scale magnifies the window on top of the fixed render framebuffer.
 - The HUD is driven by one `screensize` control (cvar `screensize`, range 0–11; the menu "screen size" slider). 0–7 = windowed 3D view + status bar; **8 = fullscreen + classic text overlay**, **9 = fullscreen + GZDoom-style graphical HUD**, **10 = the same HUD at 50%**, **11 = the vanilla status bar scaled to 50%, centred (aidoom-style, `ST_DrawScaled` in `st_stuff.c`)**. Blocks ≥ 11 are all clamped to fullscreen view in `R_ExecuteSetViewSize` (the single clamp point — every `R_SetViewSize(screenSize+3)` call site relies on it). The graphical HUD is `HU_DrawFullHUD` in `hu_over.c` (dispatched from `HU_OverlayDraw` on `screenSize`); its 50% variant reuses the full-size draw code but swaps `V_DrawPatch` (2× hires) for `V_DrawPatchUnscaled` (1× native). `hud_overlaystyle`/cvar `hu_overlay` (HUD settings → "display type") now only selects the text-overlay styles 0–3 used at screensize 8.

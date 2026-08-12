@@ -82,6 +82,7 @@ the IWAD and `smack.wad` live).
 | `-nodraw` | Don't render the 3D view (server-style / smoke test). |
 | `-noblit` | Render but don't blit to the screen. |
 | `-nomouse` | Disable mouse input. |
+| `-nojoy` | Skip gamepad/joystick initialisation entirely. (Gamepad use is also toggled in-game by the `use_joystick` option under Options → mouse options.) |
 | `-2` / `-3` / `-4` | Window scale ×2 / ×3 / ×4 (1280×800 / 1920×1200 / 2560×1600). Overrides `SMACK_SCALE`. |
 | `-geom WxH` | Create the window at exactly `W`×`H` pixels; the 640×400 framebuffer is nearest-neighbour stretched to fit (e.g. `-geom 1280x800`). Overrides the scale flags. |
 

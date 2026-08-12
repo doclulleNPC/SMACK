@@ -1,9 +1,13 @@
 # SMACK! — changes since the original SMMU 1999 tree
 
 A high-level summary of everything done to modernize this SMMU 3.21 checkout, from
-"it doesn't build" to a fully playable 64-bit Linux/SDL3 port with sound, music, and
-several new features. For the source-backed detail (symptom → root cause → fix →
-files) see [`LEGACY_FIXES.md`](LEGACY_FIXES.md).
+"it doesn't build" to a playable 64-bit Linux/SDL3 **and** Windows port with sound,
+music, and several new features.
+
+This file is grouped by topic. For the same ground in date order, commit by commit,
+see [`CHANGELOG.md`](CHANGELOG.md); for the source-backed detail on individual fixes
+(symptom → root cause → fix → files) see [`LEGACY_FIXES.md`](LEGACY_FIXES.md); for
+how to actually run the thing see [`RUNNING.md`](RUNNING.md).
 
 Starting point: the unmodified 1999 DOS/DJGPP source, plus a partial SDL3 Linux
 backend under `linux/` that did not build/run cleanly.
@@ -103,15 +107,55 @@ One unified `screensize` control now runs the whole progression:
 ## Persistence
 
 - All settings (screen size, HUD, key bindings, automap options, gamma, volumes, …)
-  save to `run (next to the binary)/smack.cfg` on exit. **Window size is not persisted** (it derives
-  from `SMACK_SCALE` each launch).
+  save to `run/ID0/smack.cfg`, both when a menu closes and on exit. **Window size is
+  not persisted** (it derives from `-geom` / `-2..-4` / `SMACK_SCALE` each launch).
+- Saving was broken twice over, and both are fixed: `atexit` originally registered an
+  empty stub instead of `I_Quit`, and later a 64-bit truncation in `M_SaveDefaults`
+  crashed the writer part way through, so the new config was never installed.
+- **`ID0/` data directory** — WADs, config and savegames all live there, leaving
+  `run/` to hold just the binary and its libraries. Savegames used to default to the
+  current working directory, i.e. wherever you happened to launch from.
+
+## Windows
+
+- **Three toolchains, one runtime directory.** `Makefile.sdl3` (Linux/gcc),
+  `Makefile.mingw` (Windows/mingw-w64) and `Makefile.msvc` + `msvc\SMACK.sln`
+  (Windows/Visual Studio 2019) all deploy into `run/`.
+- **Standalone single-file exe** — `STATIC=1` links both the CRT and SDL3 in, so the
+  result imports nothing but Windows' own system DLLs: no `SDL3.dll`, no VC++
+  redistributable.
+- `build-mingw.bat` and `build-vs2019.bat` locate the toolchain and hand off to the
+  makefiles; `tools/check-sources.ps1` guards against the four source lists drifting.
+- Portability work this required: the `z_zone` uppercase/symlink pair (uncheckoutable
+  on a case-insensitive filesystem), `<values.h>`, packed structs that MSVC silently
+  unpacked, and a handful of GCC extensions. See [`LEGACY_FIXES.md`](LEGACY_FIXES.md).
+
+## IWAD discovery
+
+- Searched in order: `-iwad`, the `ID0` data directory, the current directory, the
+  binary's directory, `$DOOMWADDIR` / `$HOME`, and finally **Steam**.
+- The Steam search finds the install from the registry (Windows) or the usual paths
+  (Linux/macOS, Flatpak included), reads `libraryfolders.vdf` so other drives are
+  covered, and handles the classic, BFG and 2024 re-release layouts. The re-release
+  IWADs are searched last — their ID24 extensions crash this renderer.
+
+## Input
+
+- **Mouse**: holding a button now repeats (motion events used to clear the button
+  mask, so fire never refired).
+- **Gamepad**: SDL3 gamepad support wired into the joystick path the engine already
+  had; enable it with Options → mouse options → "enable joystick".
 
 ## Documentation
 
 - [`docs/LEGACY_FIXES.md`](LEGACY_FIXES.md) — the detailed fix log + an audit of this
   tree against BuddyDoom's fix list (what SMMU already carries natively from MBF,
   what's deliberately kept for demo compat, what's deferred).
-- [`docs/CHANGES.md`](CHANGES.md) — this file.
+- [`docs/CHANGES.md`](CHANGES.md) — this file (grouped by topic).
+- [`docs/CHANGELOG.md`](CHANGELOG.md) — every change in date order, commit by commit.
+- [`docs/RUNNING.md`](RUNNING.md) — the player-facing guide: files, IWAD search,
+  display / sound / input options. (Moved here from `run/README.txt`.)
+- [`docs/PARAMETERS.md`](PARAMETERS.md) — every command-line switch.
 - `CLAUDE.md` stays in the repo root (Claude Code auto-loads it from there) and points
   here for the full detail.
 

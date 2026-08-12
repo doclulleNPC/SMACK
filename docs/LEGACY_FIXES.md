@@ -14,7 +14,7 @@ limit-removing cleanups.** An audit of this tree against BuddyDoom's
 bug** in the shared portability areas — see §9. The work below is mostly the SDL3
 port, the hi-res/HUD features, and a handful of genuine fixes.
 
-**Last audit:** 2026-07-25.
+**Last audit:** 2026-08-12.
 
 ---
 
@@ -316,13 +316,68 @@ steady on long ones.
 
 ---
 
+## 15. Windows portability (mingw-w64 and MSVC)
+
+| Symptom | Root cause | Fix | Files |
+|---|---|---|---|
+| `z_zone.h: Too many levels of symbolic links`; the zone allocator source missing from the working tree | `Z_ZONE.C`/`.H` were real files with lowercase symlinks beside them. On a **case-insensitive filesystem those are one directory entry**, so each symlink pointed at itself. Nothing ever included the uppercase spelling | normalize to lowercase real files; do not reintroduce the symlinks | `z_zone.c`, `z_zone.h` |
+| `values.h: No such file or directory` | a legacy SVR4/glibc header neither mingw-w64 nor Cygwin ships. Only `MAXINT`/`MININT`/`MAXSHORT` were used from it | take them from `<limits.h>` unconditionally — same constants, no platform `#ifdef` | `doomtype.h`, `m_bbox.h` |
+| `too many arguments to function 'mkdir'` | the Windows CRT's `mkdir` takes no mode argument | `#define mkdir(path,mode) _mkdir(path)` behind `_WIN32 && !__CYGWIN__` | `d_main.c` |
+| MSVC: `unistd.h` / `sys/time.h` not found, `PATH_MAX`/`strcasecmp`/`S_ISDIR` undefined | MSVC ships none of them | a small `msvc\compat\` include directory plus one force-included header (`/FI`), so the 1999 sources stay clean | `msvc/compat/*` |
+| **MSVC: animated flats/textures break; BMP screenshots unreadable** | `doomdef.h` defines `__attribute__` away on non-gcc compilers, which **silently unpacks `__attribute__((packed))` structs**. Three of them are *file* layouts: `animdef_t` (ANIMATED lump, 23 bytes) and the two BMP headers (14/40). MSVC padded all three | explicit `#pragma pack(push,1)` guards; verified both compilers agree on all three sizes | `p_spec.c`, `m_misc.c` |
+| MSVC: assorted syntax errors | GCC extensions: `default:` immediately before `}` (a label needs a statement), `{}` as an empty initializer, and arithmetic on the `void *` returned by `W_CacheLumpNum` | `break;`, `{0}`, and a `(byte *)` cast — all behaviour-preserving | `p_saveg.c`, `t_parse.c`, `p_skin.c`, `st_stuff.c` |
+
+Neither of the gcc build's load-bearing flags has an MSVC counterpart: MSVC already
+merges tentative-definition globals (no `-fcommon` needed) and performs no
+type-based alias analysis (no `-fno-strict-aliasing` needed).
+
+---
+
+## 16. Garbage columns on two-sided middle textures
+
+| Symptom | Root cause | Fix | Files |
+|---|---|---|---|
+| Vertical stripes of speckled garbage wherever a 2s middle texture (fence, grate, bars) appeared, running past the floor to the bottom of the view | `R_GetColumnMasked` kept vanilla's shortcut of reading the **raw patch lump** for single-patched columns. That pairing is invalid here: `R_GenerateLookup` composites *every* column and sets `texturecolumnofs[x]` unconditionally to a **composite** offset, while `texturecolumnlump[x]` still names the source patch. So the raw-patch path indexed a patch lump with a composite offset and `R_RenderMaskedSegRange` read the arbitrary bytes as a posted column — random topdeltas and lengths | always use the composite, which is what the offsets now describe | `r_data.c` |
+
+One-sided walls were unaffected because `R_GetColumn` uses the separate
+`texturecolumnofs2[]` / `texturecomposite2[]` pair.
+
+---
+
+## 17. Settings were never saved (the second bug)
+
+§"Config persistence" below covers the first one. The second was worse and hid
+behind it:
+
+| Symptom | Root cause | Fix | Files |
+|---|---|---|---|
+| No `smack.cfg` ever appeared; a truncated `tmpsmack.cfg` was left behind instead | **`M_SaveDefaults` segfaulted part way through.** `default_t.defaultvalue`/`orig_default` had been widened to `intptr_t` for 64-bit, but the local `value` was still an `int`. For a `dt_string` default that truncates a `char *` to 32 bits, and the `fprintf("%s")` then dereferenced it — dying on the first string entry (`name`), 406 bytes in. The `rename()` that installs the config never ran | make `value` an `intptr_t` and read string locations as `*(char **)dp->location` | `m_misc.c` |
+
+A 32-bit `int` holding something that is a pointer on LP64/LLP64 is the same class
+of bug as §2 — worth grepping for whenever a value can be either a number or a
+string.
+
+---
+
+## 18. Input: mouse buttons and the missing joystick half
+
+| Symptom | Root cause | Fix | Files |
+|---|---|---|---|
+| Holding the mouse button fired once instead of repeating | `G_Responder` treats `ev_mouse` as **state** (`mousebuttons[n] = data1 & bit`), so every event must carry the full mask. `post_mouse_motion` hardcoded `data1 = 0`, so any movement released every button; and `post_mouse_button` ignored its `down` argument, so a release looked like a press | keep the mask in a static, set/clear on down/up, report it in motion events too | `linux/i_video.c` |
+| "enable joystick" did nothing | the engine had the entire joystick path (`joyxmove`/`joyymove`/`joybuttons`, the `ev_joystick` case, the `joyb_*` bindings, the menu toggle) but **no platform code ever opened a device or posted an `ev_joystick`** | SDL3 gamepad open/hotplug, one `ev_joystick` posted per tic | `linux/i_video.c` |
+
+---
+
 ## Config persistence
 
 All console/config variables (screen size, HUD style, key bindings, automap options
 including the textured toggle, gamma, sound/music volume, …) are written to
-`run (next to the binary)/smack.cfg` on clean exit via `M_SaveDefaults` (called from `I_Quit`, an
-`atexit` handler). **The window size is NOT persisted** — it derives from
-`SMACK_SCALE` each launch.
+`run/ID0/smack.cfg` — when a menu closes (`MN_ClearMenus`) and again on clean exit
+via `M_SaveDefaults` (called from `I_Quit`, an `atexit` handler). **The window size is
+NOT persisted** — it derives from `-geom`/`-2..-4`/`SMACK_SCALE` each launch.
+
+The original never wrote a config at all: `atexit` registered an empty `I_Shutdown`
+stub instead of `I_Quit`. Fixing that exposed §17, which is why this took two goes.
 
 ---
 
@@ -344,5 +399,12 @@ including the textured toggle, gamma, sound/music volume, …) are written to
 - **A modern PWAD's tall wall texture is garbage below ~row 254** → the DeePsea
   tall-texture handling (§13); should already be fixed — check `R_GetColumn`/
   `R_GenerateComposite` (the flat `texturecomposite2`).
+- **Garbage vertical stripes over a fence/grate/bars** -> the masked-column path
+  (§16), not the wall renderer. Check what `R_GetColumnMasked` pairs with
+  `texturecolumnofs[]`.
+- **A setting silently fails to persist** -> check whether the writer crashed
+  (§17) before blaming the file location: a leftover `tmpsmack.cfg` is the tell.
+- **A struct read from or written to a file behaves differently under MSVC** -> the
+  `__attribute__((packed))` no-op (§15). Add a `#pragma pack` guard.
 - **Stairs build to the wrong height / a second staircase off one switch is wrong**
   → that's the *vanilla* stair-builder bug, kept on purpose (§9). Not yours to fix.
