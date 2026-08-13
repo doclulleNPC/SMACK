@@ -16,6 +16,7 @@ extern int VERSION;     // sf: made version an int
 
 extern const char version_date[];
 extern const char version_name[];
+extern const char smack_version[];   // SMACK! fork version, "X.Y.Z"
 
 #endif
 

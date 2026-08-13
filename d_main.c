@@ -71,6 +71,7 @@ static const char rcsid[] = "$Id: d_main.c,v 1.47 1998/05/16 09:16:51 killough E
 #include "d_main.h"
 #include "d_deh.h"  // Ty 04/08/98 - Externalizations
 #include "t_script.h"    // for FraggleScript init
+#include "version.h"     // smack_version, shown in the startup banner
 
 // DEHacked support - Ty 03/09/97
 // killough 10/98:
@@ -1646,10 +1647,10 @@ void D_DoomMain(void)
   C_Seperator();
   C_Printf(	
 	   "\n"
-	   FC_GRAY "SMACK!" FC_RED " (SMMU by Simon Howard 'Fraggle')\n"
+	   FC_GRAY "SMACK! %s" FC_RED " (SMMU by Simon Howard 'Fraggle')\n"
 	   "http://fraggle.tsx.org/ \n"
 	   "version %i.%02i '%s' \n\n",
-	   VERSION/100, VERSION%100, version_name);
+	   smack_version, VERSION/100, VERSION%100, version_name);
   
   if(!textmode_startup && !devparm)
     C_Update();

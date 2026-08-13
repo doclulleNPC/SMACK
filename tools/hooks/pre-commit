@@ -1,0 +1,64 @@
+#!/bin/sh
+#
+# Bump the SMACK! fork version on every commit, and include the bump in that
+# same commit.
+#
+#   small change   -> +0.0.1   (patch)
+#   larger feature -> +0.1.0   (minor)
+#
+# How the two are told apart, in order:
+#
+#   1. SMACK_BUMP=none|patch|minor|major  -- an explicit override, e.g.
+#          SMACK_BUMP=minor git commit -m "..."
+#   2. A marker in the *staged* nature of the change:
+#      a newly added .c/.h source file counts as a feature.
+#   3. Size: total staged added+deleted lines >= SMACK_BUMP_MINOR_LINES
+#      (default 200) counts as a feature.
+#   4. Otherwise a patch bump.
+#
+# Set SMACK_NO_BUMP=1 to skip entirely.
+#
+# Installed with:  tools/install-hooks.sh   (sets core.hooksPath)
+# Runs under Git's bundled sh on Windows and /bin/sh on Linux; POSIX only.
+
+set -e
+
+[ -n "$SMACK_NO_BUMP" ] && exit 0
+
+repo=$(git rev-parse --show-toplevel) || exit 0
+gitdir=$(git rev-parse --git-dir) || exit 0
+
+# Leave merges, rebases, cherry-picks and reverts alone: those replay or combine
+# existing work, and bumping there just creates conflicts in version.c.
+for marker in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_LOG \
+              rebase-merge rebase-apply; do
+    if [ -e "$gitdir/$marker" ]; then
+        exit 0
+    fi
+done
+
+level=${SMACK_BUMP:-}
+
+if [ -z "$level" ]; then
+    # A new source file is a feature by definition.
+    added=$(git diff --cached --name-only --diff-filter=A -- '*.c' '*.h' | wc -l)
+
+    # Otherwise go by size. version.c is excluded so the bump cannot inflate
+    # its own measurement, and binary files report "-" in numstat, which awk
+    # reads as 0.
+    lines=$(git diff --cached --numstat -- . ':(exclude)version.c' |
+            awk '{ a += $1; d += $2 } END { print a + d + 0 }')
+
+    if [ "$added" -gt 0 ] || [ "$lines" -ge "${SMACK_BUMP_MINOR_LINES:-200}" ]; then
+        level=minor
+    else
+        level=patch
+    fi
+fi
+
+[ "$level" = none ] && exit 0
+
+result=$("$repo/tools/bump-version.sh" "$level")
+git add -- "$repo/version.c"
+
+echo "smack: version $result ($level bump)"
