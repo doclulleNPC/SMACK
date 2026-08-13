@@ -1482,7 +1482,7 @@ static void MN_BindDrawer(void)
 {
   char l2[64];
   char *l1 = "press a key to bind";
-  char *l3 = "escape to cancel";
+  char *l3 = "delete to unbind, escape to cancel";
   sprintf(l2, FC_GOLD "%s", bind_action);
   MN_WriteText((unsigned char *)l1,
                (SCREENWIDTH - MN_StringWidth((unsigned char *)l1)) / 2, 84);
@@ -1495,8 +1495,16 @@ static void MN_BindDrawer(void)
 static boolean MN_BindResponder(event_t *ev)
 {
   if(ev->type != ev_keydown) return true;
-  if(ev->data1 != KEYD_ESCAPE && bind_target)
-    *bind_target = ev->data1;       // assign the pressed key
+
+  if(bind_target)
+    {
+      if(ev->data1 == KEYD_DEL)
+        *bind_target = 0;           // unbind; MN_KeyName draws 0 as "---"
+      else if(ev->data1 != KEYD_ESCAPE)
+        *bind_target = ev->data1;   // assign the pressed key
+      // escape falls through: leave the binding as it was
+    }
+
   bind_target = NULL;
   current_menuwidget = NULL;         // back to the key bindings menu
   return true;

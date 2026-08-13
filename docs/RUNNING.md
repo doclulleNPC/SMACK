@@ -145,7 +145,9 @@ gives a silent headless run.
 Defaults are the classic Doom ones: **Ctrl** fires, **Space** uses, **Alt**
 strafes, **Shift** runs, **Tab** is the automap, and the backtick key
 (<kbd>`</kbd>) opens the console. Everything is rebindable in
-**Options → key bindings**, and bindings persist in `ID0/smack.cfg`.
+**Options → key bindings**, and bindings persist in `ID0/smack.cfg`. In the
+"press a key to bind" prompt, **Delete** clears the binding (it then shows `---`)
+and **Escape** cancels without changing it.
 
 **Gamepad**: enable it with Options → mouse options → "enable joystick"
 (cvar `use_joystick`). The first pad found is used, hotplug included; the left
