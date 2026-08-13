@@ -60,6 +60,43 @@ and `linux/` sources share one object directory via two pattern rules, so a
 basename may not be used twice across those directories. **`Makefile.sdl3` and
 `Makefile.mingw` each carry their own copy of `OBJS`** — add new sources to both.
 
+### Versioning
+
+The fork's own version is `const char smack_version[]` in `version.c` (the
+SMMU `VERSION = 321` beside it is the base engine's and does not move). It shows
+in the startup banner.
+
+**It is bumped automatically on every commit** by `tools/hooks/pre-commit`, which
+stages the change into that same commit. Install once per clone:
+
+```sh
+sh tools/install-hooks.sh     # sets core.hooksPath = tools/hooks
+```
+
+How the level is chosen, in order: `SMACK_BUMP=none|patch|minor|major` if set →
+a newly added `.c`/`.h` file (a feature by definition) → total staged
+added+deleted lines ≥ `SMACK_BUMP_MINOR_LINES` (default 200) → otherwise patch.
+`SMACK_NO_BUMP=1` skips it. Merges, rebases, cherry-picks and reverts are left
+alone so replayed work doesn't fight over `version.c`.
+
+The size heuristic is a proxy, not a judgement — **force it when you know
+better**, which is the common case for a feature that happens to be a small
+diff:
+
+```sh
+SMACK_BUMP=minor git commit -m "..."
+```
+
+`tools/bump-version.sh show|patch|minor|major|set X.Y.Z` does the edit and is
+fine to run by hand. Both scripts are POSIX sh and avoid `sed -i` (GNU and BSD
+disagree about its argument), so they behave identically on Linux and on Windows
+under Git's bundled sh.
+
+One local gotcha: this repo has `core.autocrlf=true` and some files are stored
+with CRLF, so an editor that rewrites a file as LF makes the whole file show as
+changed. That inflates the line count the heuristic reads — check
+`git diff --cached --numstat` if a bump level surprises you.
+
 ### Batch wrappers (the easy path on Windows)
 
 `build-mingw.bat` and `build-vs2019.bat` at the repo root locate the toolchain

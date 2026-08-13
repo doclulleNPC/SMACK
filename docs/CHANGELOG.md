@@ -12,6 +12,28 @@ SDL3 Linux backend under `linux/`.
 
 ---
 
+## 2026-08-13
+
+### Automatic version bumping
+
+- The fork now carries its own version — `smack_version` in `version.c`, shown in
+  the startup banner — independent of the SMMU 3.21 base.
+- `tools/hooks/pre-commit` bumps it on every commit and stages the bump into that
+  same commit: **+0.0.1** for a small change, **+0.1.0** for a larger feature.
+  Chosen by, in order, a `SMACK_BUMP` override, a newly added `.c`/`.h` file, or
+  the staged line count (≥ 200 by default). Merges, rebases, cherry-picks and
+  reverts are skipped.
+- `tools/bump-version.sh` does the edit and is usable by hand; POSIX sh with no
+  `sed -i`, so Linux, macOS and Windows behave identically.
+- Hooks live in `tools/hooks` (which *is* version-controlled, unlike `.git/hooks`);
+  `sh tools/install-hooks.sh` points `core.hooksPath` at them.
+
+### Unbinding a key (menu)
+
+- **Delete** clears a binding in Options → key bindings; it then shows `---`.
+  Previously the widget could only assign or cancel, and there was no console
+  route either, so unbinding meant hand-editing `ID0/smack.cfg`.
+
 ## 2026-08-12
 
 ### Application icon

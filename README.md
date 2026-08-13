@@ -114,6 +114,20 @@ your IWAD, and it is portable.
 The mingw build remains dynamically linked against SDL3.dll (though it needs no
 redistributable, since it uses the always-present `msvcrt.dll`).
 
+## Versioning
+
+The fork version lives in `version.c` (`smack_version`) and is shown in the startup
+banner. A git hook bumps it on every commit — `+0.0.1` for a small change, `+0.1.0`
+for a larger feature. Install it once per clone:
+
+```sh
+sh tools/install-hooks.sh
+```
+
+Force the level when the heuristic guesses wrong:
+`SMACK_BUMP=minor git commit ...` (`none` and `major` also work, and
+`SMACK_NO_BUMP=1` skips the bump entirely).
+
 ## Running
 
 You supply your own IWAD (`DOOM.WAD` / `DOOM2.WAD` / `doom1.wad`) — id's IWADs are
