@@ -52,4 +52,8 @@ void HU_CrossHairInit();
 void HU_CrossHairTick();
 void HU_CrossHairConsole();
 
+void HU_HitIndicator(angle_t worldangle);   // MOD: directional hit indicator
+void HU_HitIndicatorDraw(void);
+extern int hitindicator;
+
 #endif

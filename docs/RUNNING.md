@@ -166,6 +166,19 @@ B/right-shoulder is use. `-nojoy` skips gamepad init entirely.
 to it. The setting is ignored in netgames and demos, which always use vanilla
 behaviour.
 
+## Features
+
+**Options → game options → features** collects the things that are not vanilla
+behaviour, so it is obvious what deviates:
+
+| option | cvar | notes |
+|---|---|---|
+| jump | `jump` | Off by default. Bind a key under Options → key bindings (defaults to `e`). Ignored in netgames and demo playback — the impulse is not carried in the demo stream, so recorded play is unaffected either way |
+| hit indicator | `hitindicator` | On by default. A red arc around the crosshair pointing at where incoming damage came from; it rotates as you turn, so an attacker straight ahead shows at 12 o'clock and one behind you at 6. Purely a HUD overlay |
+| end game confirmation | `endgame_style` | `vanilla` asks "are you sure?" as Doom always has; `skip message` ends immediately |
+
+"End game" moved into this menu — it used to sit directly under game options.
+
 ## Where settings are written
 
 | file | notes |

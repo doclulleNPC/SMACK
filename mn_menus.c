@@ -932,7 +932,7 @@ menu_t menu_options =
     {it_runcmd, "compatibility",                "mn_compat"},
     {it_runcmd, "enemies",                      "mn_enemies"},
     {it_runcmd, "weapons",                      "mn_weapons"},
-    {it_runcmd, "end game",                     "mn_endgame"},
+    {it_runcmd, "features",                     "mn_gamefeatures"},
     {it_gap},
     {it_info,   FC_GOLD "game widgets"},
     {it_runcmd, "hud settings",                 "mn_hud"},
@@ -950,11 +950,58 @@ CONSOLE_COMMAND(mn_options, 0)
   MN_StartMenu(&menu_options);
 }
 
+/*********************
+         FEATURES
+ *********************/
+
+// Options -> game options -> features. Extras that are not part of vanilla
+// behaviour, kept together so it is obvious what is a deviation.
+menu_t menu_gamefeatures =
+{
+  {
+    {it_title,  FC_GOLD "features",             NULL,          "M_FEAT"},
+    {it_gap},
+    {it_info,   FC_GOLD "gameplay"},
+    {it_toggle, "jump",                         "jump"},
+    {it_info,   FC_BRICK "  bind a key under options / key bindings"},
+    {it_gap},
+    {it_info,   FC_GOLD "display"},
+    {it_toggle, "hit indicator",                "hitindicator"},
+    {it_gap},
+    {it_info,   FC_GOLD "end game"},
+    {it_toggle, "confirmation",                 "endgame_style"},
+    {it_runcmd, "end game now",                 "mn_endgame"},
+    {it_end},
+  },
+  120, 15,                              // x,y offsets
+  3,                                    // starting item: first selectable
+  mf_background|mf_leftaligned,
+};
+
+CONSOLE_COMMAND(mn_gamefeatures, 0)
+{
+  MN_StartMenu(&menu_gamefeatures);
+}
+
+// 0 = ask first (vanilla), 1 = just do it
+int endgame_style;
+char *endgame_str[] = {"vanilla", "skip message"};
+VARIABLE_INT(endgame_style, NULL, 0, 1, endgame_str);
+CONSOLE_VARIABLE(endgame_style, endgame_style, 0) {}
+
 CONSOLE_COMMAND(mn_endgame, 0)
 {
   if(gamestate == GS_DEMOSCREEN) return;
   if(cmdtype != c_menu && menuactive) return;
-  
+
+  if(endgame_style)
+    {
+      // "skip message": end straight away, no are-you-sure prompt
+      MN_ClearMenus();
+      C_RunTextCmd("starttitle");
+      return;
+    }
+
   MN_Question(s_ENDGAME, "starttitle");
 }
 
@@ -1429,6 +1476,7 @@ static struct { const char *name; int *key; } keybinds[] =
   { "Centre View",  &key_centerview  },
   { "Mouse Look",   &key_mlook       },
   { "Automap",      &key_map         },
+  { "Jump",         &key_jump        },
 };
 
 #define NUMKEYBINDS ((int)(sizeof(keybinds)/sizeof(*keybinds)))
@@ -1613,6 +1661,8 @@ void MN_AddMenus()
   // prompt messages
   C_AddCommand(mn_quit);
   C_AddCommand(mn_endgame);
+  C_AddCommand(mn_gamefeatures);
+  C_AddCommand(endgame_style);
 
   MN_CreateSaveCmds();
 }

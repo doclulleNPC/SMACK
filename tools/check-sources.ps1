@@ -46,6 +46,15 @@ if ($missing) {
     exit 1
 }
 
+# Objects that are not C sources and so legitimately appear in only one build
+# file: smack_res is the Windows resource (windres output) linked by the mingw
+# build; the MSVC build compiles the same res\smack.rc via its own $(RES) rule,
+# and the Linux build has no resource section at all.
+$notsources = @('smack_res')
+foreach ($k in @($lists.Keys)) {
+    $lists[$k] = @($lists[$k] | Where-Object { $notsources -notcontains $_ })
+}
+
 # Reference is the union; report what each list is missing or has extra.
 $union = @($lists.Values | ForEach-Object { $_ }) | Sort-Object -Unique
 $ok = $true

@@ -876,6 +876,13 @@ void P_DamageMobj(mobj_t *target,mobj_t *inflictor, mobj_t *source, int damage)
     target->momx = target->momy = target->momz = 0;
 
   player = target->player;
+
+  // MOD: hit indicator -- tell the HUD which way this came from. Purely a
+  // display hook: HU_HitIndicator only timestamps an arc, so no playsim state
+  // and no RNG is touched and demos stay in sync.
+  if (player && player == &players[displayplayer] && source && source != target)
+    HU_HitIndicator(R_PointToAngle2(target->x, target->y, source->x, source->y));
+
   if (player && gameskill == sk_baby)
     damage >>= 1;   // take half damage in trainer mode
 

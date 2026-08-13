@@ -116,6 +116,7 @@ void HU_Drawer()
   // draw different modules
   HU_MessageDraw();
   HU_CrossHairDraw();
+  HU_HitIndicatorDraw();
   HU_FragsDrawer();
   HU_WarningsDrawer();
   HU_WidgetsDraw();
@@ -319,6 +320,148 @@ void HU_CrossHairDraw()
   else
     V_DrawPatchTranslated(drawx, drawy, 0, crosshair, crosshairpal, 0);
 }
+
+// ===========================================================================
+//  Directional hit indicator (ported from BuddyDoom's damage ring)
+//
+//  A red arc around the crosshair pointing at where incoming damage came from.
+//  P_DamageMobj calls HU_HitIndicator with the world angle from the hurt player
+//  to the attacker; HU_Drawer draws the arcs after the crosshair. The screen
+//  bearing is (attacker angle - viewangle), so it rotates as you turn: an
+//  attacker straight ahead shows at 12 o'clock, one behind you at 6.
+//
+//  Purely a HUD overlay -- it reads gametic and viewangle but never writes
+//  playsim state and never touches the RNG, so demos and netgames are
+//  unaffected. Toggle: `hitindicator` (Options -> features).
+// ===========================================================================
+
+int hitindicator = 1;                   // config (m_misc.c)
+
+#define HITIND_MAX   8                  // concurrent arcs (distinct directions)
+#define HITIND_TICS  24                 // ~0.7s lifetime per hit
+#define HITIND_RAMP  8                  // red fade steps (bright -> dark)
+
+static struct { angle_t ang; int until; } hitind[HITIND_MAX];
+
+// Nearest palette red for fade `level` (0 = brightest .. RAMP-1 = darkest).
+// Resolved against PLAYPAL rather than hardcoded, so it stays red whatever
+// palette the IWAD ships; cached, since the palette is stable for the run.
+static int HU_HitRed(int level)
+{
+  static int ramp[HITIND_RAMP];
+  static int ready = 0;
+
+  if (!ready)
+    {
+      const byte *pal = (const byte *) W_CacheLumpName("PLAYPAL", PU_CACHE);
+      int k, i;
+
+      for (k = 0; k < HITIND_RAMP; k++)
+        {
+          int want = 224 - k*22;         // red channel bright -> dark
+          int best = 0x70, bestd = 0x7fffffff;
+
+          if (!pal) { ramp[k] = 0x70; continue; }
+
+          for (i = 0; i < 256; i++)
+            {
+              int dr = pal[i*3+0] - want, dg = pal[i*3+1], db = pal[i*3+2];
+              int d  = dr*dr + dg*dg + db*db;
+              if (d < bestd) { bestd = d; best = i; }
+            }
+          ramp[k] = best;
+        }
+      ready = 1;
+    }
+
+  if (level < 0)             level = 0;
+  if (level >= HITIND_RAMP)  level = HITIND_RAMP - 1;
+  return ramp[level];
+}
+
+// Record a hit from `worldangle` (BAM, hurt player -> attacker). Hits from
+// roughly the same direction refresh one arc rather than spawning a swarm;
+// otherwise the oldest slot is recycled.
+void HU_HitIndicator(angle_t worldangle)
+{
+  int i, slot = 0, oldest = 0x7fffffff;
+
+  if (!hitindicator)
+    return;
+
+  for (i = 0; i < HITIND_MAX; i++)
+    {
+      angle_t d = worldangle - hitind[i].ang;
+      if (d > ANG180) d = (angle_t)0 - d;              // |delta|
+      if (hitind[i].until > gametic && d < ANG45/2) { slot = i; break; }
+      if (hitind[i].until < oldest) { oldest = hitind[i].until; slot = i; }
+    }
+
+  hitind[slot].ang   = worldangle;
+  hitind[slot].until = gametic + HITIND_TICS;
+}
+
+// Plot one pixel in the (hires) framebuffer, clipped to it.
+static void HU_HitPix(int px, int py, int col)
+{
+  int w = SCREENWIDTH  << hires;
+  int h = SCREENHEIGHT << hires;
+
+  if (px < 0 || py < 0 || px >= w || py >= h)
+    return;
+
+  screens[0][py*w + px] = col;
+}
+
+void HU_HitIndicatorDraw(void)
+{
+  int cx, cy, R, thick, i;
+  int basey;
+
+  if (!hitindicator || viewcamera || automapactive)
+    return;
+
+  // Concentric with the crosshair: same centre HU_CrossHairDraw computes, in
+  // base coords, then scaled to the framebuffer.
+  basey = scaledviewheight == SCREENHEIGHT ? SCREENHEIGHT/2
+                                           : (SCREENHEIGHT-ST_HEIGHT)/2;
+  cx    = (SCREENWIDTH/2) << hires;
+  cy    = basey << hires;
+  R     = 18 << hires;                  // ring radius around the crosshair
+  thick = 2  << hires;
+
+  for (i = 0; i < HITIND_MAX; i++)
+    {
+      angle_t s;
+      int life, col, k;
+      const int steps = 40;
+
+      if (hitind[i].until <= gametic)
+        continue;
+
+      life = hitind[i].until - gametic;   // TICS (fresh) .. 1 (fading out)
+      col  = HU_HitRed((HITIND_TICS - life) * HITIND_RAMP / HITIND_TICS);
+
+      // attacker straight ahead (relative 0) -> 12 o'clock
+      s = ANG90 + (hitind[i].ang - viewangle);
+
+      for (k = 0; k <= steps; k++)
+        {
+          angle_t  a    = s - ANG45/2 + (angle_t)((unsigned long long)ANG45 * k / steps);
+          unsigned fine = a >> ANGLETOFINESHIFT;
+          fixed_t  cosv = finecosine[fine], sinv = finesine[fine];
+          int rr;
+
+          for (rr = R; rr < R + thick; rr++)
+            {
+              int px = cx + (FixedMul(rr<<FRACBITS, cosv) >> FRACBITS);
+              int py = cy - (FixedMul(rr<<FRACBITS, sinv) >> FRACBITS);
+              HU_HitPix(px, py, col);
+            }
+        }
+    }
+}
+
 
 void HU_CrossHairInit()
 {
@@ -714,6 +857,9 @@ VARIABLE_BOOLEAN(hud_msg_scrollup,  NULL,               yesno);
 
 CONSOLE_VARIABLE(obituaries, obituaries, 0) {}
 CONSOLE_VARIABLE(obcolour, obcolour, 0) {}
+VARIABLE_BOOLEAN(hitindicator, NULL, onoff);
+CONSOLE_VARIABLE(hitindicator, hitindicator, 0) {}
+
 CONSOLE_VARIABLE(crosshair, crosshairnum, 0)
 {
   int a;
@@ -746,6 +892,7 @@ void HU_AddCommands()
   C_AddCommand(obituaries);
   C_AddCommand(obcolour);
   C_AddCommand(crosshair);
+  C_AddCommand(hitindicator);
   C_AddCommand(show_vpo);
   C_AddCommand(messages);
   C_AddCommand(mess_colour);

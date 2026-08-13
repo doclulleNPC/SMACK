@@ -223,6 +223,9 @@ int   dclickstate2;
 int   dclicks2;
 
 // joystick values are repeated
+int   key_jump;                 // MOD: jump
+int   allow_jump;               // MOD: jump enabled (Options -> features)
+
 int   joyxmove;
 int   joyymove;
 boolean joyarray[5];
@@ -365,6 +368,12 @@ void G_BuildTiccmd(ticcmd_t* cmd)
   if (gamekeydown[key_fire] || mousebuttons[mousebfire] ||
       joybuttons[joybfire])
     cmd->buttons |= BT_ATTACK;
+
+  // MOD: jump. Gated off in netgames and demos: the impulse is not carried in
+  // the demo stream, so allowing it there would desync playback.
+  if (allow_jump && !netgame && !demoplayback && !demorecording &&
+      key_jump && gamekeydown[key_jump])
+    cmd->jump = 1;
 
   if (gamekeydown[key_use] || joybuttons[joybuse])
     {
@@ -840,6 +849,7 @@ static void G_ReadDemoTiccmd(ticcmd_t *cmd)
       cmd->angleturn = ((unsigned char)*demo_p++)<<8;
       cmd->buttons = (unsigned char)*demo_p++;
       cmd->updownangle=0;
+      cmd->jump=0;              // MOD: not in the demo stream (see d_ticcmd.h)
 
       // killough 3/26/98, 10/98: Ignore savegames in demos 
       if (demoplayback && 

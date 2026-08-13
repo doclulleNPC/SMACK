@@ -58,6 +58,8 @@ static int config_help;         //jff 3/3/98
 int usemouse;
 int usejoystick;
 extern int v_width, v_height, v_fullscreen;   // linux/i_video.c
+extern int hitindicator;                      // hu_stuff.c
+extern int endgame_style;                     // mn_menus.c
 int screenshot_pcx; //jff 3/30/98 // option to output screenshot as pcx or bmp
 extern int mousebfire;
 extern int mousebstrafe;
@@ -319,6 +321,34 @@ default_t defaults[] = {
     &r_dither, NULL,
     1, {0,1}, dt_number, ss_none, wad_no,
     "1 to dither light levels, smoothing the banding in shadows"
+  },
+
+  {
+    "allow_jump",
+    &allow_jump, NULL,
+    0, {0,1}, dt_number, ss_none, wad_no,
+    "1 to enable jumping (off in netgames and demos regardless)"
+  },
+
+  {
+    "key_jump",
+    &key_jump, NULL,
+    'e', {0,255}, dt_number, ss_keys, wad_no,
+    "key to jump"
+  },
+
+  {
+    "hitindicator",
+    &hitindicator, NULL,
+    1, {0,1}, dt_number, ss_none, wad_no,
+    "1 to show a directional indicator when you take damage"
+  },
+
+  {
+    "endgame_style",
+    &endgame_style, NULL,
+    0, {0,1}, dt_number, ss_none, wad_no,
+    "end game: 0 = ask for confirmation (vanilla), 1 = skip the message"
   },
 
   {

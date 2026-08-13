@@ -93,6 +93,8 @@ extern int  key_straferight;
 
 extern int  key_fire;
 extern int  key_use;
+extern int  key_jump;      // MOD: jump
+extern int  allow_jump;    // MOD: jump enabled (Options -> features)
 extern int  key_strafe;
 extern int  key_speed;
 extern int  key_escape;                                             // phares

@@ -14,6 +14,25 @@ SDL3 Linux backend under `linux/`.
 
 ## 2026-08-13
 
+### Features menu: jump, hit indicator, end-game confirmation
+
+- **Options → game options → features** is new and replaces the "end game" entry
+  there; end game moved inside it.
+- **Jump** (`jump`, off by default; key defaults to `e`, bindable under
+  Options → key bindings). There was no free bit left in `ticcmd_t.buttons` --
+  `BT_WEAPONMASK` here is `(8+16+32+64)` for the SSG -- so the impulse rides in a
+  new `jump` field which, like the existing `updownangle`, is deliberately **not**
+  serialized: `G_WriteDemoTiccmd` stores only forwardmove/sidemove/angleturn/
+  buttons. The demo format is therefore unchanged, playback clears the field, and
+  jumping is refused in netgames and demos.
+- **Hit indicator** (`hitindicator`, on by default), ported from BuddyDoom's
+  damage ring: a red arc around the crosshair pointing at where damage came from,
+  bearing = attacker angle − viewangle so it rotates as you turn. It only
+  timestamps an arc from `P_DamageMobj` and draws in `HU_Drawer`, touching no
+  playsim state and no RNG.
+- **End game confirmation** (`endgame_style`): `vanilla` keeps the "are you sure?"
+  prompt, `skip message` ends immediately.
+
 ### Window size and fullscreen are remembered
 
 - New cvars `v_width`, `v_height` and `v_fullscreen`, saved in `ID0/smack.cfg`.

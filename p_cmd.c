@@ -120,6 +120,9 @@ CONSOLE_NETVAR(recoil, weapon_recoil, cf_server, netcmd_recoil) {}
 
 // whether picking a weapon up switches to it. A local preference, not a
 // netvar: P_GiveWeapon ignores it in netgames and demos.
+VARIABLE_BOOLEAN(allow_jump, NULL, onoff);
+CONSOLE_VARIABLE(jump, allow_jump, 0) {}
+
 VARIABLE_BOOLEAN(weapon_autoswitch, NULL, onoff);
 CONSOLE_VARIABLE(autoswitch, weapon_autoswitch, 0) {}
 
@@ -234,6 +237,7 @@ void P_AddCommands()
   C_AddCommand(autoaim);
   C_AddCommand(recoil);
   C_AddCommand(autoswitch);
+  C_AddCommand(jump);
   C_AddCommand(pushers);
   C_AddCommand(varfriction);
   C_AddCommand(nukage);

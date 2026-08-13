@@ -33,6 +33,14 @@ typedef struct
     char	forwardmove;	// *2048 for move
     char	sidemove;	// *2048 for move
     char        updownangle;
+    char        jump;           // MOD: jump impulse this tic.
+                                // Like updownangle, deliberately NOT written
+                                // to demos (G_WriteDemoTiccmd stores only
+                                // forwardmove/sidemove/angleturn/buttons), so
+                                // the demo format is unchanged and playback
+                                // can never jump. There was no free bit left
+                                // in `buttons` anyway -- BT_WEAPONMASK here is
+                                // (8+16+32+64) for the SSG.
     short	angleturn;	// <<16 for angle delta
     short	consistancy;	// checks for net game
     byte        chatchar;

@@ -33,6 +33,8 @@ rcsid[] = "$Id: p_user.c,v 1.14 1998/05/12 12:47:25 phares Exp $";
 #include "p_map.h"
 #include "p_spec.h"
 #include "p_user.h"
+#include "s_sound.h"   // MOD: jump grunt
+#include "sounds.h"    // sfx_oof
 
 // Index of the special effects (INVUL inverse) map.
 
@@ -47,6 +49,10 @@ rcsid[] = "$Id: p_user.c,v 1.14 1998/05/12 12:47:25 phares Exp $";
 #define MAXBOB  0x100000
 
 boolean onground; // whether player is on ground or in air
+
+// MOD: jump impulse. 8 units/tic is the value ports settled on -- enough to
+// clear a 32-unit step, not enough to trivialise map geometry.
+#define JUMPVELOCITY (8*FRACUNIT)
 
 //
 // P_Thrust
@@ -172,6 +178,15 @@ void P_MovePlayer (player_t* player)
 
   mo->angle += cmd->angleturn << 16;
   onground = mo->z <= mo->floorz;
+
+  // MOD: jump -- an upward impulse while standing on the ground. cmd->jump is
+  // only ever set outside netgames and demos (G_BuildTiccmd), and is cleared on
+  // demo read, so recorded play is unaffected.
+  if (cmd->jump && onground && allow_jump)
+    {
+      mo->momz = JUMPVELOCITY;
+      S_StartSound(mo, sfx_oof);
+    }
 
   // killough 10/98:
   //
