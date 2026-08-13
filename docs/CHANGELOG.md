@@ -14,6 +14,21 @@ SDL3 Linux backend under `linux/`.
 
 ## 2026-08-13
 
+### Window size and fullscreen are remembered
+
+- New cvars `v_width`, `v_height` and `v_fullscreen`, saved in `ID0/smack.cfg`.
+  Resize the window and it comes back that size next launch; the window is
+  created fullscreen if the flag is set.
+- **Fullscreen** is new: Options → video → "fullscreen", `v_fullscreen` at the
+  console, or **Alt+Enter**, which is swallowed so it never reaches the game as a
+  "use" press.
+- Command-line sizing (`-geom`, `-2`/`-3`/`-4`, `SMACK_SCALE`) still outranks the
+  saved size but is deliberately one-shot — it no longer rewrites the config. The
+  exception is a config with no size yet, where the size used is the only one the
+  player has seen and so is worth storing.
+- The resize handler skips recording while fullscreen, so the monitor size never
+  becomes the remembered windowed size; leaving fullscreen restores the window.
+
 ### Automatic version bumping
 
 - The fork now carries its own version — `smack_version` in `version.c`, shown in

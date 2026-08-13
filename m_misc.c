@@ -57,6 +57,7 @@ rcsid[] = "$Id: m_misc.c,v 1.60 1998/06/03 20:32:12 jim Exp $";
 static int config_help;         //jff 3/3/98
 int usemouse;
 int usejoystick;
+extern int v_width, v_height, v_fullscreen;   // linux/i_video.c
 int screenshot_pcx; //jff 3/30/98 // option to output screenshot as pcx or bmp
 extern int mousebfire;
 extern int mousebstrafe;
@@ -286,6 +287,31 @@ default_t defaults[] = {
     &player_bobbing, NULL,      //sf: bobbing not needed for game sync
     1, {0,1}, dt_number, ss_weap, wad_no,
     "1 to enable player bobbing (view moving up/down slightly)"
+  },
+
+  {
+    // Window geometry, remembered across launches. 0 means "never set", in
+    // which case linux/i_video.c falls back to its scale rules. Resizing the
+    // window updates these; -geom / -2..-4 / SMACK_SCALE override for one run
+    // without overwriting them.
+    "v_width",
+    &v_width, NULL,
+    0, {0,32767}, dt_number, ss_none, wad_no,
+    "window width in pixels (0 = derive from the scale settings)"
+  },
+
+  {
+    "v_height",
+    &v_height, NULL,
+    0, {0,32767}, dt_number, ss_none, wad_no,
+    "window height in pixels (0 = derive from the scale settings)"
+  },
+
+  {
+    "v_fullscreen",
+    &v_fullscreen, NULL,
+    0, {0,1}, dt_number, ss_none, wad_no,
+    "1 to start fullscreen (alt+enter toggles in game)"
   },
 
   {

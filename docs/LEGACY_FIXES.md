@@ -406,7 +406,8 @@ All console/config variables (screen size, HUD style, key bindings, automap opti
 including the textured toggle, gamma, sound/music volume, …) are written to
 `run/ID0/smack.cfg` — when a menu closes (`MN_ClearMenus`) and again on clean exit
 via `M_SaveDefaults` (called from `I_Quit`, an `atexit` handler). **The window size is
-NOT persisted** — it derives from `-geom`/`-2..-4`/`SMACK_SCALE` each launch.
+persisted as well** (`v_width`/`v_height`/`v_fullscreen`); the command-line
+sizing options override those for one run without rewriting them.
 
 The original never wrote a config at all: `atexit` registered an empty `I_Shutdown`
 stub instead of `I_Quit`. Fixing that exposed §17, which is why this took two goes.

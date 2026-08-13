@@ -65,6 +65,15 @@ static SDL_Surface  *rgba_surface = NULL;
 static Uint32       *pixel_buffer = NULL;
 static int           pitch_pixels = 0;
 
+// Persisted window geometry (cvars v_width / v_height / v_fullscreen, saved in
+// smack.cfg). 0x0 means "never set" -- a fresh config falls back to the scale
+// rules below. Command-line options still win over the saved values, so
+// -geom/-2/-3/-4 remain a one-shot override rather than something that
+// silently rewrites your config.
+int                  v_width;
+int                  v_height;
+int                  v_fullscreen;
+
 static int           win_w = 1280;
 static int           win_h = 800;
 static int           scale = 1;     // window magnification applied on top of
@@ -222,6 +231,8 @@ static void post_mouse_button(int sdl_button, boolean down)
 // G_BuildTiccmd only ever tests joyxmove/joyymove for sign, so the stick is
 // reported digitally (-1/0/+1) outside a deadzone, like the DOS joystick did.
 
+void I_SetFullscreen(void);  // defined below, next to the video cvars
+
 extern int usejoystick;      // m_misc.c -- the "enable joystick" option
 extern int joystickpresent;  // linux/i_system.c
 
@@ -355,6 +366,14 @@ void I_GetEvent(void)
         break;
 
       case SDL_EVENT_KEY_DOWN:
+        // Alt+Enter toggles fullscreen and is swallowed, so it never reaches
+        // the game as a "use" press.
+        if (ev.key.key == SDLK_RETURN && (ev.key.mod & SDL_KMOD_ALT))
+        {
+          v_fullscreen = !v_fullscreen;
+          I_SetFullscreen();
+          break;
+        }
         post_key_event(ev.key.key, true);
         break;
 
@@ -389,6 +408,14 @@ void I_GetEvent(void)
       case SDL_EVENT_WINDOW_RESIZED:
         win_w = ev.window.data1;
         win_h = ev.window.data2;
+        // Remember it for next launch -- but not while fullscreen, or we would
+        // save the monitor size as the windowed size and come back to a window
+        // the size of the screen.
+        if (!v_fullscreen)
+        {
+          v_width  = win_w;
+          v_height = win_h;
+        }
         break;
 
       default:
@@ -530,9 +557,16 @@ static void I_CreateWindowAndRenderer(void)
 {
   // The render framebuffer is SCREENWIDTH<<hires x SCREENHEIGHT<<hires
   // (640x400 in the default hi-res mode) and is nearest-neighbour stretched to
-  // the window. Window size comes from (in order of precedence): -geom WxH, the
-  // -2/-3/-4 scale flags, the SMACK_SCALE env var, else 1x (a 640x400 window).
+  // the window. Window size comes from, in order of precedence:
+  //
+  //   -geom WxH  ->  -2/-3/-4  ->  SMACK_SCALE  ->  saved v_width/v_height
+  //                                             ->  1x (a 640x400 window)
+  //
+  // The saved size sits below the command-line options deliberately: those stay
+  // one-shot overrides for a single run rather than silently rewriting the
+  // config.
   int p;
+  boolean explicit_size = false;
 
   hires_flag = hires;
   fb_w = SCREENWIDTH  << hires;
@@ -541,12 +575,15 @@ static void I_CreateWindowAndRenderer(void)
   scale = 1;
   const char *env_scale = getenv("SMACK_SCALE");
   if (env_scale && atoi(env_scale) >= 1)
+  {
     scale = atoi(env_scale);
+    explicit_size = true;
+  }
 
   // command-line scale shortcuts override SMACK_SCALE
-  if      (M_CheckParm("-4")) scale = 4;
-  else if (M_CheckParm("-3")) scale = 3;
-  else if (M_CheckParm("-2")) scale = 2;
+  if      (M_CheckParm("-4")) { scale = 4; explicit_size = true; }
+  else if (M_CheckParm("-3")) { scale = 3; explicit_size = true; }
+  else if (M_CheckParm("-2")) { scale = 2; explicit_size = true; }
 
   win_w = fb_w * scale;
   win_h = fb_h * scale;
@@ -559,14 +596,34 @@ static void I_CreateWindowAndRenderer(void)
     {
       win_w = gw;
       win_h = gh;
+      explicit_size = true;
     }
+  }
+
+  // nothing on the command line said otherwise -- use the size we saved last
+  // time, if there is one
+  if (!explicit_size && v_width > 0 && v_height > 0)
+  {
+    win_w = v_width;
+    win_h = v_height;
+  }
+
+  // Record the size only when it did not come from the command line, so
+  // -geom/-2/-3/-4/SMACK_SCALE stay one-shot for that run. The exception is a
+  // config that has no size yet: then whatever we used is the only size the
+  // player has actually seen, so it is the sensible thing to store.
+  if (!explicit_size || v_width <= 0 || v_height <= 0)
+  {
+    v_width  = win_w;
+    v_height = win_h;
   }
 
   if (!window)
   {
     window = SDL_CreateWindow("SMACK!",
                               win_w, win_h,
-                              SDL_WINDOW_RESIZABLE);
+                              SDL_WINDOW_RESIZABLE |
+                              (v_fullscreen ? SDL_WINDOW_FULLSCREEN : 0));
     if (!window) I_Error("SDL_CreateWindow failed: %s", SDL_GetError());
     I_SetWindowIcon();
   }
@@ -697,6 +754,48 @@ void I_BeginRead(void)   {}
 void I_EndRead(void)     {}
 void I_InitDiskFlash(void) {}
 
+// Apply v_fullscreen to the live window. Going back to windowed restores the
+// saved size, since SDL leaves the window at whatever it was before.
+void I_SetFullscreen(void)
+{
+  if (!window)
+    return;
+
+  SDL_SetWindowFullscreen(window, v_fullscreen ? true : false);
+
+  if (!v_fullscreen && v_width > 0 && v_height > 0)
+  {
+    SDL_SetWindowSize(window, v_width, v_height);
+    win_w = v_width;
+    win_h = v_height;
+  }
+}
+
+VARIABLE_INT(v_width,  NULL, 0, 32767, NULL);
+VARIABLE_INT(v_height, NULL, 0, 32767, NULL);
+VARIABLE_BOOLEAN(v_fullscreen, NULL, onoff);
+
+CONSOLE_VARIABLE(v_width,  v_width,  0) {}
+CONSOLE_VARIABLE(v_height, v_height, 0) {}
+
+// The handler runs after the variable has been set, so this both toggles from
+// the menu and reacts to `v_fullscreen 1` typed at the console.
+CONSOLE_VARIABLE(v_fullscreen, v_fullscreen, 0)
+{
+  I_SetFullscreen();
+}
+
+// Alt+Enter, the convention everywhere else.
+CONSOLE_COMMAND(togglefullscreen, 0)
+{
+  v_fullscreen = !v_fullscreen;
+  I_SetFullscreen();
+}
+
 void I_Video_AddCommands(void)
 {
+  C_AddCommand(v_width);
+  C_AddCommand(v_height);
+  C_AddCommand(v_fullscreen);
+  C_AddCommand(togglefullscreen);
 }

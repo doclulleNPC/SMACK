@@ -971,6 +971,7 @@ menu_t menu_video =
     {it_gap},
     {it_info,         FC_GOLD "mode"},
     {it_toggle,       "wait for retrace",             "v_retrace"},
+    {it_toggle,       "fullscreen",                   "v_fullscreen"},
     {it_runcmd,       "test framerate..",             "timedemo demo2; mn_clearmenus"},
     {it_slider,       "gamma correction",             "gamma"},
     

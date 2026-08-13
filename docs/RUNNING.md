@@ -116,7 +116,13 @@ order of precedence:
 | `SMACK_SCALE=N` | environment variable |
 | *(default)* | 1×, a 640×400 window |
 
-The window size is not saved — it is decided at each launch.
+The window size **is** remembered: resize the window and it comes back that size
+next launch (cvars `v_width`/`v_height`). The options above override the saved
+size for that run only, without overwriting it.
+
+**Fullscreen**: Options → video → "fullscreen" (cvar `v_fullscreen`), or
+**Alt+Enter** at any time. It persists, and the windowed size is kept separately,
+so leaving fullscreen returns you to the window you had.
 
 **Screen size / HUD** is the "screen size" slider in the menu (cvar
 `screensize`, 0–11):
