@@ -35,7 +35,8 @@ jobs:
             cmake -S /tmp/SDL3-3.4.12 -B /tmp/sdl3-build -G Ninja \
               -DCMAKE_BUILD_TYPE=Release -DSDL_SHARED=ON -DSDL_STATIC=OFF \
               -DSDL_X11=OFF -DSDL_WAYLAND=OFF -DSDL_ALSA=OFF -DSDL_PULSEAUDIO=OFF \
-              -DSDL_PIPEWIRE=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
+              -DSDL_PIPEWIRE=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF \
+              -DSDL_UNIX_CONSOLE_BUILD=ON
             cmake --build /tmp/sdl3-build --parallel
             sudo cmake --install /tmp/sdl3-build
             sudo ldconfig
