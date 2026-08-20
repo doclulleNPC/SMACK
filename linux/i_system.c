@@ -60,6 +60,35 @@ int I_GetTime_RealTime(void)
   return I_GetTime_RealTime_internal();
 }
 
+//
+// I_GetTimeFrac
+//
+// How far we are through the current tic, as 0..FRACUNIT. Interpolation needs
+// finer resolution than I_GetTime's whole tics, so this reads the same clock
+// but keeps the remainder instead of discarding it.
+//
+fixed_t I_GetTimeFrac(void)
+{
+  struct timeval tv;
+
+
+  unsigned long long us, tics16;
+
+  gettimeofday(&tv, NULL);
+  us = (unsigned long long)tv.tv_sec * 1000000ULL + (unsigned long long)tv.tv_usec;
+
+  // The same wall clock converted to tics as I_GetTime does, but kept in 16.16
+  // instead of truncated -- so the low bits are exactly "how far through the
+  // current tic we are". Deriving it any other way (e.g. modulo a rounded
+  // 1000000/TICRATE microseconds) drifts out of step with I_GetTime.
+  //
+  // basetime does not need subtracting: it is a whole number of tics, so it
+  // cannot affect the fractional part.
+  tics16 = (us * TICRATE * FRACUNIT) / 1000000ULL;
+
+  return (fixed_t)(tics16 & (FRACUNIT - 1));
+}
+
 static long long  I_GetTime_Scale = 1 << 16;
 static int        I_GetTime_FastDemo_state;
 

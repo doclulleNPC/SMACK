@@ -12,6 +12,35 @@ SDL3 Linux backend under `linux/`.
 
 ---
 
+## 2026-08-20
+
+### CI
+
+- GitHub Actions builds all three toolchains on every push: Linux/gcc,
+  Windows/MSVC and Windows/mingw-w64. The Linux job is the point -- development
+  happens on Windows, where SDL3 is absent and `Makefile.sdl3` cannot be run, so
+  shared-source changes had been going in unverified. It builds release and
+  debug, smoke-tests headlessly (no IWAD present, so it must exit with the IWAD
+  error rather than a signal) and runs the source-list drift check.
+- The MSVC job greps its own log for C4013 and fails on a hit -- the implicit
+  declaration warning that catches a pointer-truncating call under LLP64.
+- Two real bugs surfaced on the very first run: MSYS2's gcc defaults to C23,
+  where `false`/`true` are keywords and so cannot name enumerators, breaking the
+  1999 `typedef enum {false,true} boolean;` (fixed with a C23 branch that keeps
+  the 4-byte enum, plus `-std=gnu17` pinned in both gcc makefiles); and SDL3's
+  source build wanted the full X11 dev set, now configured headless with
+  `-DSDL_UNIX_CONSOLE_BUILD=ON`.
+
+### Frame interpolation (experimental, off by default)
+
+- `uncapped` interpolates the view and sprites between the 35 Hz game tics, so
+  motion is smooth at whatever rate the loop draws at. Display-only: previous
+  positions are snapshotted once per tic and never feed the playsim, so demos
+  and netgames are unaffected.
+- **Ships off by default because it is not finished.** With it on the game
+  segfaults on roughly 2 runs in 5, shortly after level start; see the known
+  issue in `LEGACY_FIXES.md`.
+
 ## 2026-08-13
 
 ### Features menu: jump, hit indicator, end-game confirmation

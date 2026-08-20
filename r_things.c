@@ -34,6 +34,7 @@ rcsid[] = "$Id: r_things.c,v 1.22 1998/05/03 22:46:41 killough Exp $";
 #include "r_segs.h"
 #include "r_draw.h"
 #include "r_things.h"
+#include "r_interp.h"
 
 #define MINZ        (FRACUNIT*4)
 #define BASEYCENTER 100
@@ -440,9 +441,21 @@ void R_ProjectSprite (mobj_t* thing)
   fixed_t   iscale;
   int heightsec;      // killough 3/27/98
 
+  // MOD: interpolated position, so sprites move as smoothly as the view.
+  // Only when this thing's previous position was recorded on the tic that
+  // just ran -- see P_SaveInterpolationState.
+  fixed_t thingx = thing->x, thingy = thing->y, thingz = thing->z;
+
+  if (R_Interpolating() && thing->interpvalid == interp_stamp)
+    {
+      thingx = R_LerpFixed(thing->oldx, thing->x);
+      thingy = R_LerpFixed(thing->oldy, thing->y);
+      thingz = R_LerpFixed(thing->oldz, thing->z);
+    }
+
   // transform the origin point
-  fixed_t tr_x = thing->x - viewx;
-  fixed_t tr_y = thing->y - viewy;
+  fixed_t tr_x = thingx - viewx;
+  fixed_t tr_y = thingy - viewy;
 
   fixed_t gxt = FixedMul(tr_x,viewcos);
   fixed_t gyt = -FixedMul(tr_y,viewsin);
@@ -482,7 +495,7 @@ void R_ProjectSprite (mobj_t* thing)
   if (sprframe->rotate)
     {
       // choose a different rotation based on player view
-      angle_t ang = R_PointToAngle(thing->x, thing->y);
+      angle_t ang = R_PointToAngle(thingx, thingy);
       unsigned rot = (ang-thing->angle+(unsigned)(ANG45/2)*9)>>29;
       lump = sprframe->lump[rot];
       flip = (boolean) sprframe->flip[rot];
@@ -513,12 +526,12 @@ void R_ProjectSprite (mobj_t* thing)
       return;
   }
 
-  gzt = thing->z + spritetopoffset[lump];
+  gzt = thingz + spritetopoffset[lump];
 
   // killough 4/9/98: clip things which are out of view due to height
   // sf : fix for look up/down
 //        centeryfrac=(viewheight<<(FRACBITS-1));
-  if (thing->z > viewz + FixedDiv((viewheight<<(FRACBITS)), xscale) ||
+  if (thingz > viewz + FixedDiv((viewheight<<(FRACBITS)), xscale) ||
       gzt      < viewz - FixedDiv((viewheight<<(FRACBITS))-viewheight, xscale))
     return;
 
@@ -532,13 +545,13 @@ void R_ProjectSprite (mobj_t* thing)
     {
       int phs = viewplayer->mo->subsector->sector->heightsec;
       if (phs != -1 && viewz < sectors[phs].floorheight ?
-          thing->z >= sectors[heightsec].floorheight :
+          thingz >= sectors[heightsec].floorheight :
           gzt < sectors[heightsec].floorheight)
         return;
       if (phs != -1 && viewz > sectors[phs].ceilingheight ?
           gzt < sectors[heightsec].ceilingheight &&
           viewz >= sectors[heightsec].ceilingheight :
-          thing->z >= sectors[heightsec].ceilingheight)
+          thingz >= sectors[heightsec].ceilingheight)
         return;
     }
 
@@ -551,9 +564,9 @@ void R_ProjectSprite (mobj_t* thing)
   vis->mobjflags = thing->flags;
   vis->colour = thing->colour;
   vis->scale = xscale;
-  vis->gx = thing->x;
-  vis->gy = thing->y;
-  vis->gz = thing->z;
+  vis->gx = thingx;
+  vis->gy = thingy;
+  vis->gz = thingz;
   vis->gzt = gzt;                          // killough 3/27/98
   vis->texturemid = gzt - viewz;
   vis->x1 = x1 < 0 ? 0 : x1;

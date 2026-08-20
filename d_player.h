@@ -88,6 +88,7 @@ struct player_s
   //  including viewpoint bobbing during movement.
   // Focal origin above r.z
   fixed_t             viewz;
+  fixed_t             oldviewz;   // MOD: previous tic, for interpolation
   // Base height above floor for viewz.
   fixed_t             viewheight;
   // Bob/squat speed.

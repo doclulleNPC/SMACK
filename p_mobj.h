@@ -356,7 +356,15 @@ struct mobj_s
   
   // a linked list of sectors where this object appears
   struct msecnode_s* touching_sectorlist;                 // phares 3/14/98
-  
+
+  // MOD: interpolation. Position and angle as of the start of the current
+  // tic, so the renderer can draw partway between tics (see r_interp.h).
+  // Playsim-invisible: only ever written by P_SaveInterpolationState and read
+  // by the renderer, so demos are unaffected.
+  fixed_t oldx, oldy, oldz;
+  angle_t oldangle;
+  int     interpvalid;      // gametic these are good for; 0 = do not interpolate
+
   // SEE WARNING ABOVE ABOUT POINTER FIELDS!!!
 };
 

@@ -34,6 +34,7 @@ static const char rcsid[] = "$Id: r_main.c,v 1.13 1998/05/07 00:47:52 killough E
 #include "mn_engin.h" 
 #include "r_main.h"
 #include "r_things.h"
+#include "r_interp.h"
 #include "r_plane.h"
 #include "r_ripple.h"
 #include "r_bsp.h"
@@ -515,10 +516,24 @@ void R_SetupFrame (player_t *player, camera_t *camera)
   viewcamera = camera;
   if(!camera)
   {
-          viewx = mobj->x;
-          viewy = mobj->y;
-          viewz = player->viewz;
-          viewangle = mobj->angle;// + viewangleoffset;
+          // MOD: draw partway between tics when interpolating. A thing only
+          // qualifies if its previous position was recorded on the tic that
+          // just ran -- a fresh spawn or a teleport has none, and sliding in
+          // from a stale one looks far worse than a single stationary frame.
+          if(R_Interpolating() && mobj->interpvalid == interp_stamp)
+            {
+              viewx = R_LerpFixed(mobj->oldx, mobj->x);
+              viewy = R_LerpFixed(mobj->oldy, mobj->y);
+              viewz = R_LerpFixed(player->oldviewz, player->viewz);
+              viewangle = R_LerpAngle(mobj->oldangle, mobj->angle);
+            }
+          else
+            {
+              viewx = mobj->x;
+              viewy = mobj->y;
+              viewz = player->viewz;
+              viewangle = mobj->angle;// + viewangleoffset;
+            }
                  // y shearing
           updownangle = player->updownangle;
   }
@@ -772,6 +787,7 @@ void R_AddCommands()
    C_AddCommand(r_blockmap);
    C_AddCommand(r_homflash);
    C_AddCommand(r_dither);
+   R_Interp_AddCommands();     // MOD: uncapped
    C_AddCommand(r_planeview);
    C_AddCommand(r_zoom);
    C_AddCommand(r_precache);

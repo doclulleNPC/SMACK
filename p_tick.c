@@ -29,6 +29,7 @@ rcsid[] = "$Id: p_tick.c,v 1.7 1998/05/15 00:37:56 killough Exp $";
 #include "p_chase.h"
 #include "p_spec.h"
 #include "p_tick.h"
+#include "r_interp.h"   // MOD: P_SaveInterpolationState
 #include "t_script.h"
 
 int leveltime;
@@ -242,6 +243,10 @@ void P_Ticker (void)
           P_PlayerThink(&players[i]);
 
   reset_viewz = false;  // sf
+
+  // MOD: snapshot positions before the thinkers move anything, so the
+  // renderer can draw between this tic and the next
+  P_SaveInterpolationState();
 
   P_RunThinkers();
   P_UpdateSpecials();

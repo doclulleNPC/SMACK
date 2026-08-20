@@ -59,6 +59,7 @@ int usemouse;
 int usejoystick;
 extern int v_width, v_height, v_fullscreen;   // linux/i_video.c
 extern int hitindicator;                      // hu_stuff.c
+extern int uncapped;                          // r_interp.c
 extern int endgame_style;                     // mn_menus.c
 int screenshot_pcx; //jff 3/30/98 // option to output screenshot as pcx or bmp
 extern int mousebfire;
@@ -314,6 +315,13 @@ default_t defaults[] = {
     &v_fullscreen, NULL,
     0, {0,1}, dt_number, ss_none, wad_no,
     "1 to start fullscreen (alt+enter toggles in game)"
+  },
+
+  {
+    "uncapped",
+    &uncapped, NULL,
+    0, {0,1}, dt_number, ss_none, wad_no,
+    "1 to interpolate between game tics (EXPERIMENTAL: can crash on startup)"
   },
 
   {

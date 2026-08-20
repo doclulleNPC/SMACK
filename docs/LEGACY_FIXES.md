@@ -414,6 +414,21 @@ stub instead of `I_Quit`. Fixing that exposed §17, which is why this took two g
 
 ---
 
+## Known issue: frame interpolation (`uncapped`)
+
+**Open, and the reason the option ships off by default.**
+
+| Symptom | What is known | Files |
+|---|---|---|
+| With `uncapped 1`, the game segfaults shortly after level start on roughly 2 runs in 5. Intermittent, and it has never reproduced under cdb in 6 attempts -- the debugger's timing hides it | Correlated with the feature, not merely coincident: 0/5 crashes with `uncapped 0`, 2/5 with it on. Not isolated to renderer or playsim -- a `-nodraw` bisect came back 0/5, but so did a normal run in the same batch, so that sample proves nothing at this crash rate. One real bug was found and fixed along the way (`interp_stamp` started at 0, which equals the `interpvalid` of a freshly memset mobj, so any frame drawn before the first tic interpolated every thing from (0,0,0)); it was not the whole story | `r_interp.c`, `r_main.c` (view), `r_things.c` (sprites), `p_tick.c` |
+
+Next things to try: run with `-nodraw` across 20+ runs to get a real signal on
+which side it is; add a temporary assert that `oldx/oldy/oldz` are within the
+map bounds before interpolating; check the level-change path, where the thinker
+list is freed as `PU_LEVEL` while `interp_stamp` keeps counting.
+
+---
+
 ## How to spot the next one
 
 - **From-scratch link fails with `multiple definition`** → a tentative-definition

@@ -72,6 +72,7 @@ static const char rcsid[] = "$Id: d_main.c,v 1.47 1998/05/16 09:16:51 killough E
 #include "d_deh.h"  // Ty 04/08/98 - Externalizations
 #include "t_script.h"    // for FraggleScript init
 #include "version.h"     // smack_version, shown in the startup banner
+#include "r_interp.h"    // MOD: frame interpolation
 
 // DEHacked support - Ty 03/09/97
 // killough 10/98:
@@ -1763,6 +1764,10 @@ void D_DoomMain(void)
       S_UpdateSounds(players[displayplayer].mo);// move positional sounds
 
       DEBUGMSG("display\n")
+
+      // MOD: how far we are through the current tic, for interpolation.
+      // Sampled per frame, immediately before drawing.
+      fractionaltic = R_Interpolating() ? I_GetTimeFrac() : 0;
 
       // Update display, next frame, with current state.
       D_Display();
