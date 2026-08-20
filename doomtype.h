@@ -29,6 +29,13 @@
 // Fixed to use builtin bool type with C++.
 #ifdef __cplusplus
 typedef bool boolean;
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+// C23 made false/true keywords, so they can no longer *name* enumerators.
+// The tree still uses them as values, which is fine: they are bool constants
+// that convert to the enum. Keep an enum rather than moving to C23 bool --
+// boolean is 4 bytes here and that size is baked into the struct layouts the
+// savegame code writes out.
+typedef enum {boolean_false = 0, boolean_true = 1} boolean;
 #else
 typedef enum {false, true} boolean;
 #endif

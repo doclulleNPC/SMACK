@@ -23,7 +23,11 @@ SDL_LIBS   := $(shell pkg-config --libs   sdl3)
 # globals (e.g. demo_insurance, weapon_recoil) defined in several .c files, which
 # modern gcc's default -fno-common rejects as multiple-definition link errors on
 # a from-scratch build. See docs/LEGACY_FIXES.md §2.
-CFLAGS_COMMON   = -Wall -g -I. $(SDL_CFLAGS) -DSDL3 -DDOGS -fno-strict-aliasing -fcommon -Wno-int-conversion -Wno-incompatible-pointer-types -Wno-discarded-qualifiers
+# -std=gnu17: this is 1999 C. Newer gcc defaults to C23, where false/true
+# became keywords and the classic `typedef enum {false,true} boolean;`
+# stops compiling. Pin the dialect so the build does not depend on which
+# gcc the machine happens to have.
+CFLAGS_COMMON   = -Wall -g -std=gnu17 -I. $(SDL_CFLAGS) -DSDL3 -DDOGS -fno-strict-aliasing -fcommon -Wno-int-conversion -Wno-incompatible-pointer-types -Wno-discarded-qualifiers
 CFLAGS_DEBUG    = -O0 -g -DRANGECHECK -DINSTRUMENTED
 CFLAGS_RELEASE  = -O2
 

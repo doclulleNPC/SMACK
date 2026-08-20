@@ -19,17 +19,23 @@ jobs:
       - name: Install SDL3
         run: |
           sudo apt-get update
-          # Prefer the distro package; build from source if this release does
-          # not carry SDL3 yet (it is new enough that older LTS images do not).
+          # Prefer the distro package; build from source if this image does not
+          # carry SDL3 yet.
           if ! sudo apt-get install -y libsdl3-dev; then
             echo "libsdl3-dev unavailable, building SDL3 from source"
-            sudo apt-get install -y cmake build-essential ninja-build \
-              libx11-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev
+            sudo apt-get install -y cmake build-essential ninja-build
             curl -fsSL -o /tmp/SDL3.tar.gz \
               https://github.com/libsdl-org/SDL/releases/download/release-3.4.12/SDL3-3.4.12.tar.gz
             tar -xf /tmp/SDL3.tar.gz -C /tmp
+            # X11/Wayland/audio backends are off on purpose: CI only needs
+            # headers and a linkable library. The job compiles SMACK and
+            # smoke-tests it under SDL_VIDEODRIVER=dummy, so pulling in the full
+            # X11 dev set (xcursor, xrandr, xi, ...) is just more to install and
+            # more to break -- that is what failed the first run.
             cmake -S /tmp/SDL3-3.4.12 -B /tmp/sdl3-build -G Ninja \
-              -DCMAKE_BUILD_TYPE=Release -DSDL_SHARED=ON -DSDL_STATIC=OFF
+              -DCMAKE_BUILD_TYPE=Release -DSDL_SHARED=ON -DSDL_STATIC=OFF \
+              -DSDL_X11=OFF -DSDL_WAYLAND=OFF -DSDL_ALSA=OFF -DSDL_PULSEAUDIO=OFF \
+              -DSDL_PIPEWIRE=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
             cmake --build /tmp/sdl3-build --parallel
             sudo cmake --install /tmp/sdl3-build
             sudo ldconfig
@@ -45,8 +51,8 @@ jobs:
       - name: Smoke test
         run: |
           test -x run/smack
-          # No IWAD here, so it must fail with the IWAD error rather than crash.
-          # SDL is forced headless; a segfault would show up as 139.
+          # No IWAD here, so it must exit with the IWAD error rather than a
+          # signal. A startup segfault would show up as an exit code >= 128.
           export SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
           set +e
           out=$(cd run && ./smack -nosound -nomusic 2>&1); rc=$?
@@ -77,17 +83,12 @@ jobs:
         with:
           arch: x64
 
-      - name: Build
+      - name: Build, and fail on any implicit declaration
         shell: cmd
-        run: nmake /f Makefile.msvc SDL3_DIR=%SDL3_DIR%
-
-      - name: Check for implicit declarations
-        shell: cmd
-        # C4013 is the warning that catches an implicitly declared function --
-        # which returns int and so truncates a pointer under LLP64. It is
-        # deliberately not suppressed; fail the build if one appears.
+        # C4013 is the warning for an implicitly declared function, which
+        # returns int and so truncates a pointer under LLP64. It is deliberately
+        # not suppressed -- see docs/LEGACY_FIXES.md 9.1.
         run: |
-          nmake /f Makefile.msvc clean
           nmake /f Makefile.msvc SDL3_DIR=%SDL3_DIR% > build.log 2>&1
           type build.log
           findstr /C:"warning C4013" build.log && exit 1 || exit 0
@@ -95,8 +96,9 @@ jobs:
       - name: Artefacts present
         shell: pwsh
         run: |
-          Test-Path run\smack.exe -PathType Leaf
-          Test-Path run\ID0\smack.wad -PathType Leaf
+          if (-not (Test-Path run\smack.exe)) { throw "no run\smack.exe" }
+          if (-not (Test-Path run\ID0\smack.wad)) { throw "no run\ID0\smack.wad" }
+          "ok"
 
   windows-mingw:
     name: Windows (mingw-w64)
@@ -114,7 +116,6 @@ jobs:
           install: >-
             make
             mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-pkgconf
             unzip
             curl
 

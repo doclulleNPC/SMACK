@@ -47,7 +47,11 @@ SDL_LIBS   = $(SDL3_DLL)
 #   -DWIN32_LEAN_AND_MEAN trims windows.h where it gets pulled in
 #   -mconsole             keep the console attached — the engine prints its
 #                         startup banner and I_Error text to stdout/stderr
-CFLAGS_COMMON  = -Wall -g -I. $(SDL_CFLAGS) -DSDL3 -DDOGS \
+# -std=gnu17: this is 1999 C. Newer gcc defaults to C23, where false/true
+# became keywords and the classic `typedef enum {false,true} boolean;`
+# stops compiling. Pin the dialect so the build does not depend on which
+# gcc the machine happens to have.
+CFLAGS_COMMON  = -Wall -g -std=gnu17 -I. $(SDL_CFLAGS) -DSDL3 -DDOGS \
                  -fno-strict-aliasing -fcommon \
                  -D_USE_MATH_DEFINES -DWIN32_LEAN_AND_MEAN \
                  -Wno-int-conversion -Wno-incompatible-pointer-types \
