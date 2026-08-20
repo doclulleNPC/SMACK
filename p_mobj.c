@@ -30,6 +30,7 @@ rcsid[] = "$Id: p_mobj.c,v 1.26 1998/05/16 00:24:12 phares Exp $";
 #include "p_maputl.h"
 #include "p_map.h"
 #include "p_tick.h"
+#include "r_interp.h"   // MOD: P_ResetInterpolation
 #include "sounds.h"
 #include "st_stuff.h"
 #include "hu_stuff.h"
@@ -726,6 +727,13 @@ mobj_t *P_SpawnMobj(fixed_t x, fixed_t y, fixed_t z, mobjtype_t type)
   P_AddThinker(&mobj->thinker);
 
   mobj->colour = (info->flags & MF_TRANSLATION) >> MF_TRANSSHIFT;
+
+  // MOD: interpolation. Seed the previous position from the current one and
+  // leave interpvalid at 0, so this thing is not interpolated until it has
+  // lived through a whole tic. Without the seed a stale/zero "previous"
+  // position can be read; without the 0 stamp a thing appears to fly in from
+  // wherever it spawned relative to.
+  P_ResetInterpolation(mobj);
 
   return mobj;
 }

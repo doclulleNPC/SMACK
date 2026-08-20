@@ -320,8 +320,8 @@ default_t defaults[] = {
   {
     "uncapped",
     &uncapped, NULL,
-    0, {0,1}, dt_number, ss_none, wad_no,
-    "1 to interpolate between game tics (EXPERIMENTAL: can crash on startup)"
+    1, {0,1}, dt_number, ss_none, wad_no,
+    "1 to interpolate between game tics (smooth motion above 35fps)"
   },
 
   {

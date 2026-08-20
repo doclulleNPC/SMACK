@@ -22,6 +22,8 @@
 #include "m_fixed.h"
 #include "tables.h"
 
+struct mobj_s;
+
 extern int     uncapped;        // cvar: interpolate between tics
 extern fixed_t fractionaltic;   // 0..FRACUNIT through the current tic
 extern int     interp_stamp;    // bumped per tic; see r_interp.c
@@ -37,12 +39,27 @@ boolean R_Interpolating(void);
 // Save every thing's current position as "previous". Once per game tic.
 void P_SaveInterpolationState(void);
 
+// Forget a thing's previous position -- call after any discontinuous move.
+void P_ResetInterpolation(struct mobj_s *mo);
+
 void R_Interp_AddCommands(void);
 
 // Blend from -> to by fractionaltic.
+// A thing cannot legitimately move more than this in one tic (MAXMOVE is 30
+// units; a lift or a heavy thrust is still far below 128). A larger delta means
+// a discontinuity someone forgot to reset, so snap rather than sweep the thing
+// across the level -- and rather than feed a wild coordinate to the projection
+// maths, which is where that ends badly.
+#define R_INTERP_MAXDELTA (128*FRACUNIT)
+
 inline static fixed_t R_LerpFixed(fixed_t from, fixed_t to)
 {
-  return from + FixedMul(to - from, fractionaltic);
+  fixed_t delta = to - from;
+
+  if (delta > R_INTERP_MAXDELTA || delta < -R_INTERP_MAXDELTA)
+    return to;
+
+  return from + FixedMul(delta, fractionaltic);
 }
 
 // Angles are modular: subtracting two angle_t values wraps to the shortest

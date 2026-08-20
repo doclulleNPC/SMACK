@@ -1028,7 +1028,7 @@ menu_t menu_video =
     {it_toggle,       "hom detector flashes",         "r_homflash"},
     {it_toggle,       "translucency",                 "r_trans"},
     {it_toggle,       "dither light levels",          "r_dither"},
-    {it_toggle,       "interpolate motion (beta)",    "uncapped"},
+    {it_toggle,       "interpolate motion",           "uncapped"},
     {it_variable,     "translucency percentage",      "r_tranpct"},
     
     {it_gap},

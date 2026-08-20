@@ -28,6 +28,7 @@ rcsid[] = "$Id: p_map.c,v 1.35 1998/05/12 12:47:16 phares Exp $";
 #include "r_main.h"
 #include "p_mobj.h"
 #include "p_maputl.h"
+#include "r_interp.h"   // MOD: P_ResetInterpolation
 #include "p_map.h"
 #include "p_setup.h"
 #include "p_spec.h"
@@ -204,6 +205,9 @@ int P_GetMoveFactor(const mobj_t *mo, int *frictionp)
 // killough 8/9/98
 boolean P_TeleportMove(mobj_t *thing, fixed_t x, fixed_t y, boolean boss)
 {
+  // MOD: a teleport is a discontinuity -- interpolating across it would drag
+  // the thing visibly through the level. Reset below, once the move succeeds.
+
   int xl, xh, yl, yh, bx, by;
   subsector_t *newsubsec;
 
@@ -263,6 +267,8 @@ boolean P_TeleportMove(mobj_t *thing, fixed_t x, fixed_t y, boolean boss)
   thing->y = y;
 
   P_SetThingPosition(thing);
+
+  P_ResetInterpolation(thing);   // MOD: do not interpolate across the jump
 
   return true;
 }

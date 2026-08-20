@@ -414,18 +414,23 @@ stub instead of `I_Quit`. Fixing that exposed §17, which is why this took two g
 
 ---
 
-## Known issue: frame interpolation (`uncapped`)
+## Frame interpolation: crashing on discontinuities
 
-**Open, and the reason the option ships off by default.**
+Fixed. Recorded because the failure mode is easy to reintroduce.
 
-| Symptom | What is known | Files |
-|---|---|---|
-| With `uncapped 1`, the game segfaults shortly after level start on roughly 2 runs in 5. Intermittent, and it has never reproduced under cdb in 6 attempts -- the debugger's timing hides it | Correlated with the feature, not merely coincident: 0/5 crashes with `uncapped 0`, 2/5 with it on. Not isolated to renderer or playsim -- a `-nodraw` bisect came back 0/5, but so did a normal run in the same batch, so that sample proves nothing at this crash rate. One real bug was found and fixed along the way (`interp_stamp` started at 0, which equals the `interpvalid` of a freshly memset mobj, so any frame drawn before the first tic interpolated every thing from (0,0,0)); it was not the whole story | `r_interp.c`, `r_main.c` (view), `r_things.c` (sprites), `p_tick.c` |
+| Symptom | Root cause | Fix | Files |
+|---|---|---|---|
+| With `uncapped 1`, a segfault shortly after level start on ~2 runs in 5. Intermittent, and it never reproduced under cdb -- the debugger's timing hid it | Interpolating across a **discontinuity**. A thing that spawned or teleported partway through a tic still carried a "previous" position from before the jump, so the renderer swept it across the map and fed wild coordinates into the projection maths. Whether a given frame landed on such a thing was down to timing, hence the flakiness | The way Woof and Crispy do it: reset the previous position wherever a thing moves discontinuously (`P_ResetInterpolation` from `P_SpawnMobj` and `P_TeleportMove`), and refuse to blend a delta larger than a thing could legitimately move in one tic (`R_INTERP_MAXDELTA`, 128 units vs `MAXMOVE`'s 30) so a missed reset degrades to a snap rather than a crash | `r_interp.c/.h`, `p_mobj.c`, `p_map.c` |
 
-Next things to try: run with `-nodraw` across 20+ runs to get a real signal on
-which side it is; add a temporary assert that `oldx/oldy/oldz` are within the
-map bounds before interpolating; check the level-change path, where the thinker
-list is freed as `PU_LEVEL` while `interp_stamp` keeps counting.
+An earlier bug in the same feature: `interp_stamp` started at 0, which is
+exactly the `interpvalid` of a freshly memset mobj, so any frame drawn before
+the first tic interpolated every thing from (0,0,0). Fixed by starting the
+stamp at 1; it was not the whole story, which is why the reset discipline
+above matters more.
+
+Measured after the fix: 0 crashes in 16 runs (from ~40%), and 16/16 frame pairs
+captured 9 ms apart differ, where before the fix 0/14 did -- i.e. the renderer
+really is drawing distinct images inside a single 28.6 ms tic.
 
 ---
 

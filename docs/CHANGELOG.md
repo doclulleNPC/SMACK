@@ -31,15 +31,23 @@ SDL3 Linux backend under `linux/`.
   source build wanted the full X11 dev set, now configured headless with
   `-DSDL_UNIX_CONSOLE_BUILD=ON`.
 
-### Frame interpolation (experimental, off by default)
+### Frame interpolation (`uncapped`, on by default)
 
-- `uncapped` interpolates the view and sprites between the 35 Hz game tics, so
-  motion is smooth at whatever rate the loop draws at. Display-only: previous
-  positions are snapshotted once per tic and never feed the playsim, so demos
-  and netgames are unaffected.
-- **Ships off by default because it is not finished.** With it on the game
-  segfaults on roughly 2 runs in 5, shortly after level start; see the known
-  issue in `LEGACY_FIXES.md`.
+- Interpolates the view and sprites between the 35 Hz game tics, so motion is
+  smooth at whatever rate the loop draws at. The loop already drew unbounded --
+  that is why the process pegs a core -- but every frame between tics showed
+  identical world state, so it looked like 35 fps regardless.
+- Display-only: positions are snapshotted once per tic and the blended values
+  never feed back into the playsim, so demos and netgames are unaffected. The
+  tic rate itself is untouched, which it has to be: `TICRATE` is baked into
+  every movement constant, weapon and monster timing, and the demo format is
+  one ticcmd per tic.
+- Interpolation is suppressed across discontinuities the way Woof and Crispy do
+  it -- spawn and teleport reset a thing's previous position, and an
+  implausible delta snaps rather than sweeps. Getting that wrong was a
+  ~40%-of-runs segfault; see `LEGACY_FIXES.md`.
+- Measured: 0 crashes in 16 runs, and 16/16 frame pairs 9 ms apart differ
+  (0/14 before), i.e. distinct images really are drawn inside one 28.6 ms tic.
 
 ## 2026-08-13
 

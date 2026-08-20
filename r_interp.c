@@ -12,11 +12,7 @@
 #include "r_interp.h"
 #include "c_runcmd.h"
 
-// OFF by default: see the known issue in docs/LEGACY_FIXES.md. Enabling this
-// makes the game crash on startup perhaps 2 runs in 5 -- intermittently, and
-// never under a debugger. The feature is landed opt-in so the work is
-// reviewable and CI covers it, but it is not fit to be the default yet.
-int     uncapped;           // cvar (m_misc.c persists it)
+int     uncapped = 1;       // cvar (m_misc.c persists it)
 fixed_t fractionaltic;
 
 // Bumped once per game tic. Things carry the stamp they were last snapshotted
@@ -37,6 +33,23 @@ boolean R_Interpolating(void)
   // previous state worth blending, and while paused or single-stepping the
   // "previous" tic never advances, so interpolating would drift the view.
   return uncapped && gamestate == GS_LEVEL && !paused && !singletics;
+}
+
+//
+// P_ResetInterpolation
+//
+// Called wherever a thing moves discontinuously -- spawn, teleport -- so the
+// renderer has no stale "previous" position to drag it from. Clearing the
+// stamp is what actually suppresses interpolation; seeding old = current keeps
+// the fields sane for anything that reads them anyway.
+//
+void P_ResetInterpolation(mobj_t *mo)
+{
+  mo->oldx = mo->x;
+  mo->oldy = mo->y;
+  mo->oldz = mo->z;
+  mo->oldangle = mo->angle;
+  mo->interpvalid = 0;
 }
 
 //
