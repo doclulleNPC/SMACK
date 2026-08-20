@@ -1,0 +1,131 @@
+name: build
+
+# Every toolchain this repo supports, on every push. The Linux build in
+# particular is otherwise easy to break blind: development happens on Windows,
+# where `pkg-config --exists sdl3` fails and Makefile.sdl3 cannot be run at all.
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  linux-gcc:
+    name: Linux (gcc, SDL3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SDL3
+        run: |
+          sudo apt-get update
+          # Prefer the distro package; build from source if this release does
+          # not carry SDL3 yet (it is new enough that older LTS images do not).
+          if ! sudo apt-get install -y libsdl3-dev; then
+            echo "libsdl3-dev unavailable, building SDL3 from source"
+            sudo apt-get install -y cmake build-essential ninja-build \
+              libx11-dev libxext-dev libwayland-dev libxkbcommon-dev libegl1-mesa-dev
+            curl -fsSL -o /tmp/SDL3.tar.gz \
+              https://github.com/libsdl-org/SDL/releases/download/release-3.4.12/SDL3-3.4.12.tar.gz
+            tar -xf /tmp/SDL3.tar.gz -C /tmp
+            cmake -S /tmp/SDL3-3.4.12 -B /tmp/sdl3-build -G Ninja \
+              -DCMAKE_BUILD_TYPE=Release -DSDL_SHARED=ON -DSDL_STATIC=OFF
+            cmake --build /tmp/sdl3-build --parallel
+            sudo cmake --install /tmp/sdl3-build
+            sudo ldconfig
+          fi
+          pkg-config --modversion sdl3
+
+      - name: Build (release)
+        run: make -f Makefile.sdl3 -j"$(nproc)"
+
+      - name: Build (debug)
+        run: make -f Makefile.sdl3 debug -j"$(nproc)"
+
+      - name: Smoke test
+        run: |
+          test -x run/smack
+          # No IWAD here, so it must fail with the IWAD error rather than crash.
+          # SDL is forced headless; a segfault would show up as 139.
+          export SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
+          set +e
+          out=$(cd run && ./smack -nosound -nomusic 2>&1); rc=$?
+          set -e
+          echo "$out" | tail -5
+          echo "exit=$rc"
+          if [ "$rc" -ge 128 ]; then echo "crashed (signal)"; exit 1; fi
+
+      - name: Source-list drift check
+        shell: pwsh
+        run: ./tools/check-sources.ps1
+
+  windows-msvc:
+    name: Windows (MSVC)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch SDL3 (VC devel)
+        shell: pwsh
+        run: |
+          $url = "https://github.com/libsdl-org/SDL/releases/download/release-3.4.12/SDL3-devel-3.4.12-VC.zip"
+          Invoke-WebRequest -Uri $url -OutFile sdl3.zip -UseBasicParsing
+          Expand-Archive sdl3.zip -DestinationPath $env:RUNNER_TEMP -Force
+          "SDL3_DIR=$env:RUNNER_TEMP\SDL3-3.4.12" >> $env:GITHUB_ENV
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build
+        shell: cmd
+        run: nmake /f Makefile.msvc SDL3_DIR=%SDL3_DIR%
+
+      - name: Check for implicit declarations
+        shell: cmd
+        # C4013 is the warning that catches an implicitly declared function --
+        # which returns int and so truncates a pointer under LLP64. It is
+        # deliberately not suppressed; fail the build if one appears.
+        run: |
+          nmake /f Makefile.msvc clean
+          nmake /f Makefile.msvc SDL3_DIR=%SDL3_DIR% > build.log 2>&1
+          type build.log
+          findstr /C:"warning C4013" build.log && exit 1 || exit 0
+
+      - name: Artefacts present
+        shell: pwsh
+        run: |
+          Test-Path run\smack.exe -PathType Leaf
+          Test-Path run\ID0\smack.wad -PathType Leaf
+
+  windows-mingw:
+    name: Windows (mingw-w64)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: >-
+            make
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-pkgconf
+            unzip
+            curl
+
+      - name: Fetch SDL3 (VC devel -- the mingw build links straight at the DLL)
+        run: |
+          curl -fsSL -o sdl3.zip \
+            https://github.com/libsdl-org/SDL/releases/download/release-3.4.12/SDL3-devel-3.4.12-VC.zip
+          unzip -q sdl3.zip -d "$RUNNER_TEMP"
+
+      - name: Build
+        run: |
+          SDL3_WIN=$(cygpath -m "$RUNNER_TEMP/SDL3-3.4.12")
+          make -f Makefile.mingw -j"$(nproc)" CC=gcc SDL3_DIR="$SDL3_WIN"
+          test -f run/smack.exe
