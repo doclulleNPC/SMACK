@@ -157,7 +157,7 @@ OBJS = \
 	$(OUTDIR)\t_vari.obj    $(OUTDIR)\t_func.obj    $(OUTDIR)\t_oper.obj    \
 	$(OUTDIR)\t_spec.obj    $(OUTDIR)\opl3.obj      $(OUTDIR)\i_opl.obj     \
 	$(OUTDIR)\i_mus.obj     $(OUTDIR)\version.obj   $(OUTDIR)\dogs.obj     \
-	$(OUTDIR)\d_iwad.obj    $(OUTDIR)\r_interp.obj
+	$(OUTDIR)\d_iwad.obj    $(OUTDIR)\r_interp.obj   $(OUTDIR)\p_umapinfo.obj
 
 # NMAKE has no equivalent of gcc's -MMD -MP, so there is no per-header
 # dependency tracking here: editing an engine header does NOT rebuild the files

@@ -23,6 +23,9 @@
 #include "w_wad.h"
 #include "p_setup.h"
 #include "p_info.h"
+#include "p_umapinfo.h"
+
+extern char levelmapname[10];   // p_setup.c
 #include "p_mobj.h"
 #include "t_script.h"
 #include "z_zone.h"
@@ -88,6 +91,10 @@ void P_LoadLevelInfo(int lumpnum)
   Z_Free(lump);
   
   P_InitWeapons();
+
+  // UMAPINFO overrides whatever the map marker / defaults produced. Applied
+  // last so a wad's UMAPINFO wins over SMMU's own level-info lump.
+  P_ApplyUMapInfo(levelmapname);
 }
 
 void P_ParseInfoCmd(char *line)

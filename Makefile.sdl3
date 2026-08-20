@@ -54,6 +54,7 @@ PLATOBJS = \
 OBJS = \
 	$(PLATOBJS)        \
 	$(O)/p_info.o      \
+	$(O)/p_umapinfo.o  \
 	$(O)/c_cmd.o       \
 	$(O)/c_io.o        \
 	$(O)/c_runcmd.o    \

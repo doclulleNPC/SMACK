@@ -30,6 +30,7 @@ rcsid[] = "$Id: w_wad.c,v 1.20 1998/05/06 11:32:00 jim Exp $";
 #include "c_io.h"
 #include "p_skin.h"
 #include "w_wad.h"
+#include "p_umapinfo.h"
 
 //
 // GLOBALS
@@ -485,6 +486,7 @@ int W_AddNewFile(char *filename)
 {
         if(W_AddFile(filename)) return true;
         W_InitResources();              // reinit lump lookups etc
+        P_LoadUMapInfo();               // MOD: the new wad may carry UMAPINFO
         return false;
 }
 

@@ -14,6 +14,22 @@ SDL3 Linux backend under `linux/`.
 
 ## 2026-08-20
 
+### UMAPINFO
+
+- `p_umapinfo.c` parses the UMAPINFO lump, the de-facto standard modern
+  megawads use to describe their own maps. SMMU already had an equivalent of
+  its own -- `p_info.c` reads the same fields out of the map marker lump -- so
+  this feeds those globals rather than adding a second level-info system, and
+  is applied after them so a wad's UMAPINFO wins.
+- **Applied today:** `levelname`, `levelpic`, `next`, `par`, `music`,
+  `skytexture`, `intertext`, `interbackdrop`.
+- **Parsed but not yet acted on:** `nextsecret` (p_info has no secret-exit
+  field to hang it on), `label`, `endgame`, `nointermission`. `bossaction`,
+  `endpic` and anything from a later revision are skipped cleanly -- unknown
+  keys must never stop a wad loading.
+- Every UMAPINFO in load order is parsed, so a later pwad overrides an earlier
+  one per key, and a wad loaded at runtime re-parses.
+
 ### CI
 
 - GitHub Actions builds all three toolchains on every push: Linux/gcc,

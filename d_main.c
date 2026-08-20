@@ -73,6 +73,7 @@ static const char rcsid[] = "$Id: d_main.c,v 1.47 1998/05/16 09:16:51 killough E
 #include "t_script.h"    // for FraggleScript init
 #include "version.h"     // smack_version, shown in the startup banner
 #include "r_interp.h"    // MOD: frame interpolation
+#include "p_umapinfo.h" // MOD: UMAPINFO
 
 // DEHacked support - Ty 03/09/97
 // killough 10/98:
@@ -1591,6 +1592,8 @@ void D_DoomMain(void)
   // End new startup strings
 
   startupmsg("C_Init","Init console.");
+  P_LoadUMapInfo();   // MOD: after the wads are loaded
+
   C_Init();
 
   startupmsg("V_InitMisc","Init miscellaneous video patches");
