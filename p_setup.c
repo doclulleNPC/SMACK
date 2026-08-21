@@ -402,7 +402,10 @@ void P_LoadLineDefs (int lump)
       line_t *ld = lines+i;
       vertex_t *v1, *v2;
 
-      ld->flags = SHORT(mld->flags);
+      // cast through unsigned short (Woof src/p_setup.c:388): SHORT() yields a
+      // signed short, so a linedef with bit 15 set would sign-extend into the
+      // int and switch on every high bit -- including the mbf21 block flags.
+      ld->flags = (unsigned short)SHORT(mld->flags);
       ld->special = SHORT(mld->special);
       ld->tag = SHORT(mld->tag);
       v1 = ld->v1 = &vertexes[SHORT(mld->v1)];

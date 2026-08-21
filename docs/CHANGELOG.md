@@ -12,6 +12,24 @@ SDL3 Linux backend under `linux/`.
 
 ---
 
+## Unreleased
+
+### MBF21: line flags
+
+- `ML_BLOCKLANDMONSTERS` (bit 12) and `ML_BLOCKPLAYERS` (bit 13) added to
+  `doomdata.h` and enforced in `PIT_CheckLine` (`p_map.c`), mirroring Woof
+  (`src/doomdata.h:217`, `src/p_map.c:419,427`): players are blocked by
+  `ML_BLOCKPLAYERS`, and monsters without `MF_FLOAT` by `ML_BLOCKLANDMONSTERS`.
+  Bouncing and missile objects pass through both, as with the older flags.
+- Linedef flags are now read through `(unsigned short)` in `p_setup.c` (as Woof
+  does at `src/p_setup.c:388`). `SHORT()` returns a *signed* short, so a linedef
+  with bit 15 set sign-extended into the `int` and turned on every high bit —
+  which would have made those lines block players and land monsters wholesale.
+- Caveat: SMACK has no complevel system, so these two bits are always honoured.
+  Woof gates them on `mbf21` and additionally masks flags to `0x1FF` on a line
+  with the reserved bit set (`comp_reservedlineflag`). That masking is *not*
+  ported here, because SMACK treats bit 9 as Boom’s `ML_PASSUSE`.
+
 ## 2026-08-21
 
 ### Resolution is a runtime value (groundwork)

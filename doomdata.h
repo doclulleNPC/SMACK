@@ -120,6 +120,12 @@ typedef struct {
 //allow multiple push/switch triggers to be used on one push
 #define ML_PASSUSE      512
 
+// MBF21 line flags. Values and semantics from Woof (src/doomdata.h:217) and
+// enforced in PIT_CheckLine the way Woof does (src/p_map.c:419,427).
+// Bits 12 and 13 are free here: nothing above ML_PASSUSE (1<<9) was in use.
+#define ML_BLOCKLANDMONSTERS    4096    // mbf21: blocks non-floating monsters
+#define ML_BLOCKPLAYERS         8192    // mbf21: blocks players only
+
 // Sector definition, from editing.
 typedef struct {
   short floorheight;
