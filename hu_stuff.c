@@ -655,7 +655,7 @@ void HU_CentreMsg(char *s)
 
 textwidget_t hu_leveltime =
 {
-  SCREENWIDTH-60, SCREENHEIGHT-ST_HEIGHT-8,      // x, y
+  BASE_WIDTH-60, BASE_HEIGHT-ST_HEIGHT-8,      // x, y
   0,                                             // normal font
   NULL,                                          // null msg
   HU_LevelTimeHandler                            // handler
@@ -685,7 +685,7 @@ void HU_LevelTimeHandler()
 
 textwidget_t hu_levelname =
 {
-  0, SCREENHEIGHT-ST_HEIGHT-8,       // x,y 
+  0, BASE_HEIGHT-ST_HEIGHT-8,       // x,y 
   0,                                 // normal font
   NULL,                              // init to nothing
   HU_LevelNameHandler                // handler

@@ -1,0 +1,13 @@
+IWAD found: C:/Source/sdldoom-sdl3/run/doom2.wad
+DOOM II version
+
+M_LoadDefaults: Load system defaults.
+V_Init: allocate screens.
+W_Init: Init WADfiles.
+ adding C:/Source/sdldoom-sdl3/run/doom2.wad
+ adding C:/Source/SMACK/run/ID0/smack.wad
+
+C_Init: Init console.
+V_InitMisc: Init miscellaneous video patches
+I_Init: Setting up machine state.
+D_SetGraphicsMode: Set graphics mode

@@ -12,6 +12,23 @@ SDL3 Linux backend under `linux/`.
 
 ---
 
+## 2026-08-21
+
+### Resolution is a runtime value (groundwork)
+
+- `SCREENWIDTH`/`SCREENHEIGHT` were compile-time `#define`s; they are now
+  variables, still 320x200 base doubled by `hires`. **Nothing about what the
+  game draws changes** -- this is the step every later move toward arbitrary
+  resolutions and widescreen depends on, done on its own so it stays
+  reviewable.
+- New `BASE_WIDTH`/`BASE_HEIGHT` name the fixed 320x200 space HUD and menu
+  layout is expressed in, which `V_DrawPatch` scales up. Static widget
+  positions use those; the live resolution uses SCREENWIDTH/SCREENHEIGHT. The
+  distinction did not need naming while both were the same constant.
+- Of 453 uses, only four places actually needed changing -- one array bound
+  (`f_wipe.c`) and three static initialisers that are no longer constant
+  expressions. gcc caught all three; MSVC accepted them silently.
+
 ## 2026-08-20
 
 ### UMAPINFO

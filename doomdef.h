@@ -89,8 +89,23 @@ typedef enum {
 #define MAX_SCREENWIDTH  640
 #define MAX_SCREENHEIGHT 400
 
-#define SCREENWIDTH      320
-#define SCREENHEIGHT     200
+// Runtime, not compile-time. Still 320x200 base (doubled by `hires`) -- this
+// change is deliberately behaviour-neutral. It exists because every step toward
+// arbitrary resolutions and widescreen needs these to be variables first, and
+// doing that conversion on its own keeps it reviewable: nothing here changes
+// what the game draws, only where the numbers come from.
+//
+// The renderer's fixed arrays stay sized to MAX_SCREENWIDTH/MAX_SCREENHEIGHT,
+// which is what bounds them; these two say how much of that is in use.
+extern int SCREENWIDTH;
+extern int SCREENHEIGHT;
+
+// The base coordinate space HUD/menu layout is expressed in, which is a fixed
+// 320x200 regardless of the render resolution -- V_DrawPatch scales it up. Use
+// these where a *layout constant* is meant (static widget positions and the
+// like), and SCREENWIDTH/SCREENHEIGHT where the live resolution is meant.
+#define BASE_WIDTH       320
+#define BASE_HEIGHT      200
 
 // The maximum number of players, multiplayer/networking.
 #define MAXPLAYERS       4

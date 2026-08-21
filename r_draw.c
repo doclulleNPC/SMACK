@@ -55,7 +55,10 @@ int  viewwindowx;
 int  viewwindowy; 
 byte *ylookup[MAXHEIGHT]; 
 int  columnofs[MAXWIDTH]; 
-int  linesize = SCREENWIDTH;  // killough 11/98
+// killough 11/98. Not initialised from SCREENWIDTH: that is a runtime
+// variable now (doomdef.h) so this is not a constant expression.
+// R_InitBuffer/R_ExecuteSetViewSize set it before anything draws.
+int  linesize = 320;
 
 // Color tables for different players,
 //  translate a limited part to another

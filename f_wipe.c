@@ -25,7 +25,7 @@
 static char *start_screen[MAX_SCREENWIDTH] = {0};
 
 // y co-ordinate of various columns
-static int worms[SCREENWIDTH];
+static int worms[MAX_SCREENWIDTH];   // bound, not the live width
 
 #define wipe_scrheight (SCREENHEIGHT<<hires)
 #define wipe_scrwidth (SCREENWIDTH<<hires)

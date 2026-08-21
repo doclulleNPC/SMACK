@@ -81,8 +81,12 @@ static int           scale = 1;     // window magnification applied on top of
                                    // it (default 1). With hires the framebuffer
                                    // is already 640x400, so scale=1 -> 640x400.
 static int           hires_flag = 0;
-static int           fb_w = SCREENWIDTH;   // render framebuffer size, =
-static int           fb_h = SCREENHEIGHT;  // SCREEN{WIDTH,HEIGHT} << hires
+// Render framebuffer size = SCREEN{WIDTH,HEIGHT} << hires. Not initialised
+// from those here: they are runtime variables now (doomdef.h), so this is
+// not a constant expression. I_CreateWindowAndRenderer sets both before
+// anything reads them.
+static int           fb_w;
+static int           fb_h;
 
 static SDL_PixelFormat    pixel_fmt;
 static const SDL_PixelFormatDetails *pixel_details = NULL;

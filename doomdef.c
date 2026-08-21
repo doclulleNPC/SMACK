@@ -1,4 +1,9 @@
 // Emacs style mode select   -*- C++ -*-
+
+// See doomdef.h: the base resolution, now a runtime value.
+int SCREENWIDTH  = 320;
+int SCREENHEIGHT = 200;
+
 //-----------------------------------------------------------------------------
 //
 // $Id: doomdef.c,v 1.3 1998/05/03 22:40:02 killough Exp $
