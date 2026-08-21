@@ -1622,6 +1622,7 @@ void P_UseLines(player_t *player)
 
 static mobj_t *bombsource, *bombspot;
 static int bombdamage;
+static int bombdistance;   // mbf21: A_RadiusDamage radius
 
 //
 // PIT_RadiusAttack
@@ -1660,11 +1661,22 @@ static boolean PIT_RadiusAttack(mobj_t *thing)
   if (dist < 0)
     dist = 0;
 
-  if (dist >= bombdamage)
+  if (dist >= bombdistance)
     return true;  // out of range
 
   if (P_CheckSight(thing, bombspot))      // must be in direct path
-    P_DamageMobj(thing, bombspot, bombsource, bombdamage - dist);
+    {
+      int damage;
+
+      // mbf21 (Woof src/p_map.c:1985): when damage and radius are equal this
+      // is the vanilla falloff, so A_Explode is bit-for-bit unchanged.
+      if (bombdamage == bombdistance)
+        damage = bombdamage - dist;
+      else
+        damage = (bombdamage * (bombdistance - dist) / bombdistance) + 1;
+
+      P_DamageMobj(thing, bombspot, bombsource, damage);
+    }
 
   return true;
 }
@@ -1674,9 +1686,9 @@ static boolean PIT_RadiusAttack(mobj_t *thing)
 // Source is the creature that caused the explosion at spot.
 //
 
-void P_RadiusAttack(mobj_t *spot, mobj_t *source, int damage)
+void P_RadiusAttack(mobj_t *spot, mobj_t *source, int damage, int distance)
 {
-  fixed_t dist = (damage+MAXRADIUS)<<FRACBITS;
+  fixed_t dist = (distance+MAXRADIUS)<<FRACBITS;
   int yh = (spot->y + dist - bmaporgy)>>MAPBLOCKSHIFT;
   int yl = (spot->y - dist - bmaporgy)>>MAPBLOCKSHIFT;
   int xh = (spot->x + dist - bmaporgx)>>MAPBLOCKSHIFT;
@@ -1686,6 +1698,7 @@ void P_RadiusAttack(mobj_t *spot, mobj_t *source, int damage)
   bombspot = spot;
   bombsource = source;
   bombdamage = damage;
+  bombdistance = distance;
 
   for (y=yl ; y<=yh ; y++)
     for (x=xl ; x<=xh ; x++)

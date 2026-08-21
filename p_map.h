@@ -39,6 +39,7 @@ boolean P_TryMove(mobj_t *thing, fixed_t x, fixed_t y, boolean dropoff);
 // killough 8/9/98: extra argument for telefragging
 boolean P_TeleportMove(mobj_t *thing, fixed_t x, fixed_t y,boolean boss);
 void    P_SlideMove(mobj_t *mo);
+boolean P_CheckFov(mobj_t *t1, mobj_t *t2, angle_t fov);  // mbf21
 boolean P_CheckSight(mobj_t *t1, mobj_t *t2);
 void    P_UseLines(player_t *player);
 
@@ -46,7 +47,7 @@ void    P_UseLines(player_t *player);
 fixed_t P_AimLineAttack(mobj_t *t1, angle_t angle, fixed_t distance,int mask);
 void    P_LineAttack(mobj_t *t1, angle_t angle, fixed_t distance,
                      fixed_t slope, int damage );
-void    P_RadiusAttack(mobj_t *spot, mobj_t *source, int damage);
+void    P_RadiusAttack(mobj_t *spot, mobj_t *source, int damage, int distance);
 boolean P_CheckPosition(mobj_t *thing, fixed_t x, fixed_t y);
 
 //jff 3/19/98 P_CheckSector(): new routine to replace P_ChangeSector()

@@ -24,6 +24,7 @@
 #define __M_RANDOM__
 
 #include "doomtype.h"
+#include "m_fixed.h"
 
 // killough 1/19/98: rewritten to use to use a better random number generator
 // in the new engine, although the old one is available for compatibility.
@@ -113,6 +114,7 @@ typedef enum {
   pr_defect,                  // #62
   pr_script,                  // #63: FraggleScript
   // End of new entries
+  pr_mbf21,                   // #64: mbf21 codepointers
   NUMPRCLASS                  // MUST be last item in list
 } pr_class_t;
 
@@ -131,6 +133,11 @@ extern unsigned long rngseed;          // The starting seed (not part of state)
 
 // As M_Random, but used by the play simulation.
 int P_Random(pr_class_t);
+
+// mbf21 hitscan spread (Woof src/m_random.c:144). Both take the maximum
+// spread in fixed-point *degrees*, not BAM.
+int P_RandomHitscanAngle(pr_class_t pr_class, fixed_t spread);
+int P_RandomHitscanSlope(pr_class_t pr_class, fixed_t spread);
 
 // Fix randoms for demos.
 void M_ClearRandom(void);

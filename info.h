@@ -1222,6 +1222,10 @@ typedef enum
 // ********************************************************************
 // Definition of the state (frames) structure
 // ********************************************************************
+// mbf21: states carry up to eight integer arguments, set from a DEHACKED
+// Frame block via "Args1".."Args8" and read by the mbf21 codepointers.
+#define MAXSTATEARGS 8
+
 typedef struct
 {
   spritenum_t sprite;       // sprite number to show
@@ -1230,6 +1234,7 @@ typedef struct
   void        (*action)();  // code pointer to function for action if any
   statenum_t  nextstate;    // linked list pointer to next state or zero
   long        misc1, misc2; // used for psprite positioning
+  int         args[MAXSTATEARGS]; // mbf21 codepointer arguments (Args1..Args8)
 } state_t;
 
 // these are in info.c
@@ -1448,6 +1453,11 @@ typedef struct
     int raisestate;   // The first state for an Archvile or respawn
                       //  resurrection.  Zero means it won't come
                       //  back to life.
+  // mbf21: melee range, settable per thing via DEHACKED "Melee range".
+  // info.c initialises the table positionally and stops short of this field,
+  // so it is 0 for every thing until a patch sets it; A_MonsterMeleeAttack
+  // reads 0 as "use MELEERANGE".
+  int meleerange;
 } mobjinfo_t;
 
 // See p_mobj_h for addition more technical info

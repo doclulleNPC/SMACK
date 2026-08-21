@@ -419,6 +419,11 @@ void    P_SpawnPuff(fixed_t x, fixed_t y, fixed_t z);
 void    P_SpawnBlood(fixed_t x, fixed_t y, fixed_t z, int damage);
 mobj_t  *P_SpawnMissile(mobj_t *source, mobj_t *dest, mobjtype_t type);
 mobj_t  *P_SpawnPlayerMissile(mobj_t *source, mobjtype_t type);
+
+// mbf21
+boolean P_SeekerMissile(mobj_t *actor, mobj_t **seekTarget, angle_t thresh,
+                        angle_t turnMax, boolean seekcenter);
+int     P_FaceMobj(mobj_t *source, mobj_t *target, angle_t *delta);
 mobj_t  *P_SpawnMapThing (mapthing_t*  mthing);
 void    P_CheckMissileSpawn(mobj_t*);  // killough 8/2/98
 void    P_ExplodeMissile(mobj_t*);    // killough

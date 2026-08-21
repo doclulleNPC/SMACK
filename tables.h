@@ -71,6 +71,35 @@ extern const angle_t tantoangle[SLOPERANGE+1];
 
 // Utility function, called by R_PointToAngle.
 int SlopeDiv(unsigned num, unsigned den);
+
+// mbf21 angle/slope helpers (Woof src/tables.h:81), from Eternity by way of
+// Woof so that mbf21 demos stay in sync.
+#define ANG1    (ANG45/45)
+
+static inline angle_t FixedToAngle(fixed_t a)
+{
+  return (angle_t)(((unsigned long long)a * ANG1) >> FRACBITS);
+}
+
+// [XA] Clamped angle->slope, for convenience
+static inline fixed_t AngleToSlope(int a)
+{
+  if (a > ANG90)
+    return finetangent[0];
+  else if (-a > ANG90)
+    return finetangent[FINEANGLES / 2 - 1];
+  else
+    return finetangent[(ANG90 - a) >> ANGLETOFINESHIFT];
+}
+
+// [XA] Ditto, using fixed-point-degrees input
+static inline fixed_t DegToSlope(fixed_t a)
+{
+  if (a >= 0)
+    return AngleToSlope(FixedToAngle(a));
+  else
+    return AngleToSlope(-(int)FixedToAngle(-a));
+}
 int SlopeDivCrispy(unsigned num, unsigned den);   // overflow-safe (large maps)
 int arctan(int x, int y); //sf
 

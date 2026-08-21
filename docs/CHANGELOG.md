@@ -14,6 +14,46 @@ SDL3 Linux backend under `linux/`.
 
 ## Unreleased
 
+### MBF21: monster codepointers
+
+The parameterized monster pointers, ported from Woof (`src/p_enemy.c:2865-3271`):
+`A_SpawnObject`, `A_MonsterProjectile`, `A_MonsterBulletAttack`,
+`A_MonsterMeleeAttack`, `A_RadiusDamage`, `A_NoiseAlert`, `A_HealChase`,
+`A_SeekTracer`, `A_FindTracer`, `A_ClearTracer`, `A_JumpIfHealthBelow`,
+`A_JumpIfTargetInSight`, `A_JumpIfTargetCloser`, `A_JumpIfTracerInSight` and
+`A_JumpIfTracerCloser`. All are reachable from a DEHACKED `[CODEPTR]` block.
+
+Supporting work:
+
+- `state_t` gained `args[MAXSTATEARGS]` (`info.h`), set from a Frame block via
+  `Args1`..`Args8`. `info.c` initialises states positionally with five fields,
+  so the new members zero-fill.
+- `tables.h`: `FixedToAngle`, `AngleToSlope`, `DegToSlope` (Woof `src/tables.h:81`,
+  originally Eternity).
+- `m_random`: `pr_mbf21` appended to the RNG classes (appended, so existing class
+  indices and therefore demo compatibility are untouched), plus
+  `P_RandomHitscanAngle` / `P_RandomHitscanSlope`.
+- `P_CheckFov` (`p_sight.c`), `P_RoughTargetSearch` (`p_maputl.c`, Hexen by way of
+  Woof), `P_SeekerMissile` / `P_FaceMobj` (`p_mobj.c`).
+- `A_VileChase` refactored into `P_HealCorpse(actor, radius, healstate, healsound)`
+  so `A_HealChase` can share it; `PIT_VileCheck` now reads `viletryradius` instead
+  of hardcoding the archvile’s. `A_VileChase` passes the vile’s own radius, so its
+  behaviour is unchanged.
+- `P_RadiusAttack` gained a `distance` parameter for `A_RadiusDamage`. When damage
+  and distance are equal the falloff reduces to the vanilla formula, so `A_Explode`
+  and the other existing callers are bit-for-bit unchanged.
+- `mobjinfo_t.meleerange` + DEHACKED `Melee range` (`DEH_MOBJINFOMAX` 23 → 24).
+  The `info.c` table stops short of the new field, so it is 0 until a patch sets
+  it, and `A_MonsterMeleeAttack` reads 0 as "use `MELEERANGE`".
+
+Deviations from Woof: SMACK has no complevel system, so the `mbf21` guard on each
+pointer is dropped — a state only reaches one of these if a patch pointed it there.
+SMACK also has no damage-type plumbing, so `A_MonsterMeleeAttack` calls plain
+`P_DamageMobj` rather than `P_DamageMobjBy(..., MOD_Melee)`.
+
+Still outstanding for MBF21: the weapon codepointers, the thing flags (`flags2`)
+with `A_AddFlags` / `A_RemoveFlags` / `A_JumpIfFlagsSet`, and DSDHacked.
+
 ### MBF21: instant-death sectors
 
 - `DEATH_MASK` (bit 12) and `KILL_MONSTERS_MASK` (bit 13) added to `p_spec.h`,

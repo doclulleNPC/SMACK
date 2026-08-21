@@ -949,7 +949,7 @@ typedef struct
 // killough 8/9/98: make DEH_BLOCKMAX self-adjusting
 #define DEH_BLOCKMAX (sizeof deh_blocks/sizeof*deh_blocks)  // size of array
 #define DEH_MAXKEYLEN 32 // as much of any key as we'll look at
-#define DEH_MOBJINFOMAX 23 // number of ints in the mobjinfo_t structure (!)
+#define DEH_MOBJINFOMAX 24 // number of ints in the mobjinfo_t structure (!)
 
 // Put all the block header values, and the function to be called when that
 // one is encountered, in this array:
@@ -1007,7 +1007,8 @@ char *deh_mobjinfo[DEH_MOBJINFOMAX] =
   "Missile damage",      // .damage
   "Action sound",        // .activesound
   "Bits",                // .flags
-  "Respawn frame"        // .raisestate
+  "Respawn frame",       // .raisestate
+  "Melee range"          // .meleerange (mbf21)
 };
 
 // Strings that are used to indicate flags ("Bits" in mobjinfo)
@@ -1086,8 +1087,21 @@ char *deh_state[] =
   // This is set in a separate "Pointer" block from Dehacked
   "Codep Frame",      // pointer to first use of action (actionf_t)
   "Unknown 1",        // .misc1 (long)
-  "Unknown 2"         // .misc2 (long)
+  "Unknown 2",        // .misc2 (long)
+  // mbf21 codepointer arguments. Indices 7..14 -- deh_state is indexed
+  // positionally above, so these must stay at the end.
+  "Args1",            // .args[0]
+  "Args2",            // .args[1]
+  "Args3",            // .args[2]
+  "Args4",            // .args[3]
+  "Args5",            // .args[4]
+  "Args6",            // .args[5]
+  "Args7",            // .args[6]
+  "Args8"             // .args[7]
 };
+
+// index in deh_state[] of "Args1"; args are the eight entries from there on
+#define DEH_STATE_ARGS0 7
 
 // SFXINFO_STRUCT - Dehacked block name = "Sounds"
 // Sound effects, typically not changed (redirected, and new sfx put
@@ -1267,6 +1281,23 @@ extern void A_SpawnFly();
 extern void A_BrainExplode();
 extern void A_Detonate();        // killough 8/9/98
 extern void A_Mushroom();        // killough 10/98
+
+// mbf21 codepointers
+extern void A_SpawnObject();
+extern void A_MonsterProjectile();
+extern void A_MonsterBulletAttack();
+extern void A_MonsterMeleeAttack();
+extern void A_RadiusDamage();
+extern void A_NoiseAlert();
+extern void A_HealChase();
+extern void A_SeekTracer();
+extern void A_FindTracer();
+extern void A_ClearTracer();
+extern void A_JumpIfHealthBelow();
+extern void A_JumpIfTargetInSight();
+extern void A_JumpIfTargetCloser();
+extern void A_JumpIfTracerInSight();
+extern void A_JumpIfTracerCloser();
 extern void A_Die();             // killough 11/98
 extern void A_Spawn();           // killough 11/98
 extern void A_Turn();            // killough 11/98
@@ -1369,6 +1400,23 @@ deh_bexptr deh_bexptrs[] =
   {A_RandomJump,     "A_RandomJump"},     // killough 11/98
   {A_LineEffect,     "A_LineEffect"},     // killough 11/98
   {A_Nailbomb,       "A_Nailbomb"},      //sf
+
+  // mbf21
+  {A_SpawnObject,           "A_SpawnObject"},
+  {A_MonsterProjectile,     "A_MonsterProjectile"},
+  {A_MonsterBulletAttack,   "A_MonsterBulletAttack"},
+  {A_MonsterMeleeAttack,    "A_MonsterMeleeAttack"},
+  {A_RadiusDamage,          "A_RadiusDamage"},
+  {A_NoiseAlert,            "A_NoiseAlert"},
+  {A_HealChase,             "A_HealChase"},
+  {A_SeekTracer,            "A_SeekTracer"},
+  {A_FindTracer,            "A_FindTracer"},
+  {A_ClearTracer,           "A_ClearTracer"},
+  {A_JumpIfHealthBelow,     "A_JumpIfHealthBelow"},
+  {A_JumpIfTargetInSight,   "A_JumpIfTargetInSight"},
+  {A_JumpIfTargetCloser,    "A_JumpIfTargetCloser"},
+  {A_JumpIfTracerInSight,   "A_JumpIfTracerInSight"},
+  {A_JumpIfTracerCloser,    "A_JumpIfTracerCloser"},
 
   // This NULL entry must be the last in the list
   {NULL,             "A_NULL"},  // Ty 05/16/98
@@ -1760,7 +1808,22 @@ void deh_procFrame(DEHFILE *fpin, FILE* fpout, char *line)
                       states[indexnum].misc2 = value; // long
                     }
                   else
-                    if (fpout) fprintf(fpout,"Invalid frame string index for '%s'\n",key);
+                    {
+                      // mbf21 Args1..Args8
+                      int arg;
+
+                      for (arg = 0; arg < MAXSTATEARGS; arg++)
+                        if (!strcasecmp(key,deh_state[DEH_STATE_ARGS0+arg]))
+                          break;
+
+                      if (arg < MAXSTATEARGS)
+                        {
+                          if (fpout) fprintf(fpout," - args[%d] = %ld\n",arg,value);
+                          states[indexnum].args[arg] = (int)value;
+                        }
+                      else
+                        if (fpout) fprintf(fpout,"Invalid frame string index for '%s'\n",key);
+                    }
     }
   return;
 }
