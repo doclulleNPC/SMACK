@@ -434,6 +434,33 @@ really is drawing distinct images inside a single 28.6 ms tic.
 
 ---
 
+## Next: widescreen, the way Woof does it
+
+`SCREENWIDTH`/`SCREENHEIGHT` are runtime variables now and `BASE_WIDTH`/
+`BASE_HEIGHT` name the fixed 320x200 layout space, which is the groundwork.
+The remaining work should follow Woof rather than be invented -- checkouts of
+`woof`, `crispy-doom` and `dsda-doom` sit beside this one in `C:/Source`.
+
+Woof's model, from `src/i_video.c`:
+
+- `video.unscaledw = unscaled_actualheight * aspect_ratio` -- the width is
+  *derived from the aspect ratio*, keeping the vertical base fixed. Widescreen
+  shows more at the sides rather than squashing; the 200-unit height never
+  moves.
+- `video.deltaw = (video.unscaledw - NONWIDEWIDTH) / 2` (i_video.c:1238), where
+  `NONWIDEWIDTH` is 320 -- our `BASE_WIDTH`. That delta is the whole trick.
+- Everything laid out in the 320-wide space subtracts `deltaw` when drawing so
+  it stays put while the view widens: the status bar, automap
+  (`am_map.c:2532`), finale (`f_finale.c`), crosshair (`hu_crosshair.c:198`),
+  the disk icon. Grepping Woof for `deltaw` enumerates every site that needs
+  the treatment; ours are the same list.
+
+So the order is: derive the width from an aspect-ratio setting, allocate the
+framebuffer and recompute the projection/view tables from it, then walk our
+equivalents of Woof's `deltaw` sites. `BASE_WIDTH` already marks most of them.
+
+---
+
 ## How to spot the next one
 
 - **From-scratch link fails with `multiple definition`** → a tentative-definition
