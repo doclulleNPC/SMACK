@@ -1221,7 +1221,14 @@ static void G_DoPlayDemo(void)
 #define VERSIONSIZE   16
 
 // killough 2/22/98: version id string format for savegames
-#define VERSIONID "MBF %d"
+// The savegame stores mobj_t verbatim, so any change to that struct changes
+// the format. SMACK_SAVE_REV rides along in the same 16-byte version field
+// (VERSIONSIZE), which makes G_DoLoadGame's strncmp reject older saves with
+// the usual "Different Savegame Version" prompt instead of misreading them.
+// Bump it whenever a saved struct changes.
+//   1: mbf21 mobj_t.flags2
+#define SMACK_SAVE_REV 1
+#define VERSIONID "MBF %d/S%d"
 
 static char savename[PATH_MAX+1];
 
@@ -1342,7 +1349,7 @@ void G_SaveCurrentLevel(char *filename, char *description)
   memset (name2, 0, sizeof(name2));
 
   // killough 2/22/98: "proprietary" version string :-)
-  sprintf (name2, VERSIONID, VERSION);
+  sprintf (name2, VERSIONID, VERSION, SMACK_SAVE_REV);
 
   memcpy (save_p, name2, VERSIONSIZE);
   save_p += VERSIONSIZE;
@@ -1458,7 +1465,7 @@ static void G_DoLoadGame(void)
   // skip the description field
 
   // killough 2/22/98: "proprietary" version string :-)
-  sprintf (vcheck, VERSIONID, VERSION);
+  sprintf (vcheck, VERSIONID, VERSION, SMACK_SAVE_REV);
 
   // killough 2/22/98: Friendly savegame version difference message
   if (!forced_loadgame && strncmp(save_p, vcheck, VERSIONSIZE))

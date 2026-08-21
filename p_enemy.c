@@ -211,26 +211,30 @@ static boolean P_CheckMissileRange(mobj_t *actor)
 
   dist >>= FRACBITS;
 
-  if (actor->type == MT_VILE)
+  // mbf21 (Woof src/p_enemy.c:237) grants these as flags. The hardcoded type
+  // checks stay alongside them, so vanilla things behave exactly as before
+  // whether or not a patch sets the corresponding flag.
+
+  if (actor->type == MT_VILE || actor->flags2 & MF2_SHORTMRANGE)
     if (dist > 14*64)
       return false;     // too far away
 
-  if (actor->type == MT_UNDEAD)
-    {
-      if (dist < 196)
-        return false;   // close for fist attack
-      dist >>= 1;
-    }
+  if (actor->type == MT_UNDEAD || actor->flags2 & MF2_LONGMELEE)
+    if (dist < 196)
+      return false;     // close for fist attack
 
-  if (actor->type == MT_CYBORG ||
+  // the revenant halves the distance too, which mbf21 splits out as RANGEHALF
+  if (actor->type == MT_UNDEAD ||
+      actor->type == MT_CYBORG ||
       actor->type == MT_SPIDER ||
-      actor->type == MT_SKULL)
+      actor->type == MT_SKULL ||
+      actor->flags2 & MF2_RANGEHALF)
     dist >>= 1;
 
   if (dist > 200)
     dist = 200;
 
-  if (actor->type == MT_CYBORG && dist > 160)
+  if ((actor->type == MT_CYBORG || actor->flags2 & MF2_HIGHERMPROB) && dist > 160)
     dist = 160;
 
   if (P_Random(pr_missrange) < dist)
@@ -1042,7 +1046,8 @@ void A_Look(mobj_t *actor)
           sound = actor->info->seesound;
           break;
         }
-      if (actor->type==MT_SPIDER || actor->type == MT_CYBORG)
+      if (actor->type==MT_SPIDER || actor->type == MT_CYBORG ||
+          actor->flags2 & (MF2_BOSS | MF2_FULLVOLSOUNDS))   // mbf21
         S_StartSound(NULL, sound);          // full volume
       else
         S_StartSound(actor, sound);
@@ -2024,7 +2029,8 @@ void A_Scream(mobj_t *actor)
     }
 
   // Check for bosses.
-  if (actor->type==MT_SPIDER || actor->type == MT_CYBORG)
+  if (actor->type==MT_SPIDER || actor->type == MT_CYBORG ||
+      actor->flags2 & (MF2_BOSS | MF2_FULLVOLSOUNDS))       // mbf21
     S_StartSound(NULL, sound); // full volume
   else
     S_StartSound(actor, sound);
@@ -2129,8 +2135,11 @@ void A_BossDeath(mobj_t *mo)
       if (gamemap != 7)
         return;
 
+      // mbf21 (Woof src/p_enemy.c:2373): MAP07BOSS1/2 stand in for the
+      // hardcoded types, which are kept so vanilla behaviour is unchanged
       if ((mo->type != MT_FATSO)
-          && (mo->type != MT_BABY))
+          && (mo->type != MT_BABY)
+          && !(mo->flags2 & (MF2_MAP07BOSS1 | MF2_MAP07BOSS2)))
         return;
     }
   else
@@ -2141,7 +2150,7 @@ void A_BossDeath(mobj_t *mo)
           if (gamemap != 8)
             return;
 
-          if (mo->type != MT_BRUISER)
+          if (mo->type != MT_BRUISER && !(mo->flags2 & MF2_E1M8BOSS))
             return;
           break;
 
@@ -2149,7 +2158,7 @@ void A_BossDeath(mobj_t *mo)
           if (gamemap != 8)
             return;
 
-          if (mo->type != MT_CYBORG)
+          if (mo->type != MT_CYBORG && !(mo->flags2 & MF2_E2M8BOSS))
             return;
           break;
 
@@ -2157,7 +2166,7 @@ void A_BossDeath(mobj_t *mo)
           if (gamemap != 8)
             return;
 
-          if (mo->type != MT_SPIDER)
+          if (mo->type != MT_SPIDER && !(mo->flags2 & MF2_E3M8BOSS))
             return;
 
           break;
@@ -2166,12 +2175,12 @@ void A_BossDeath(mobj_t *mo)
           switch(gamemap)
             {
             case 6:
-              if (mo->type != MT_CYBORG)
+              if (mo->type != MT_CYBORG && !(mo->flags2 & MF2_E4M6BOSS))
                 return;
               break;
 
             case 8:
-              if (mo->type != MT_SPIDER)
+              if (mo->type != MT_SPIDER && !(mo->flags2 & MF2_E4M8BOSS))
                 return;
               break;
 
@@ -2212,14 +2221,14 @@ void A_BossDeath(mobj_t *mo)
     {
       if (gamemap == 7)
         {
-          if (mo->type == MT_FATSO)
+          if (mo->type == MT_FATSO || mo->flags2 & MF2_MAP07BOSS1)
             {
               junk.tag = 666;
               EV_DoFloor(&junk,lowerFloorToLowest);
               return;
             }
 
-          if (mo->type == MT_BABY)
+          if (mo->type == MT_BABY || mo->flags2 & MF2_MAP07BOSS2)
             {
               junk.tag = 667;
               EV_DoFloor(&junk,raiseToTexture);
@@ -2999,6 +3008,95 @@ void A_JumpIfTracerCloser(mobj_t* actor)
   if (distance > P_AproxDistance(actor->x - actor->tracer->x,
                                  actor->y - actor->tracer->y))
     P_SetMobjState(actor, state);
+}
+
+
+//
+// A_JumpIfFlagsSet
+// Jumps to a state if caller has the specified thing flags set.
+//   args[0]: State to jump to
+//   args[1]: Standard Flag(s) to check
+//   args[2]: MBF21 Flag(s) to check
+//
+void A_JumpIfFlagsSet(mobj_t* actor)
+{
+  int state;
+  unsigned int flags, flags2;
+
+  if (!actor)
+    return;
+
+  state  = actor->state->args[0];
+  flags  = actor->state->args[1];
+  flags2 = actor->state->args[2];
+
+  if ((actor->flags & flags) == flags &&
+      (actor->flags2 & flags2) == flags2)
+    P_SetMobjState(actor, state);
+}
+
+//
+// A_AddFlags
+// Adds the specified thing flags to the caller.
+//   args[0]: Standard Flag(s) to add
+//   args[1]: MBF21 Flag(s) to add
+//
+void A_AddFlags(mobj_t* actor)
+{
+  unsigned int flags, flags2;
+  boolean update_blockmap;
+
+  if (!actor)
+    return;
+
+  flags  = actor->state->args[0];
+  flags2 = actor->state->args[1];
+
+  // unlink/relink the thing from the blockmap if
+  // the NOBLOCKMAP or NOSECTOR flags are added
+  update_blockmap = ((flags & MF_NOBLOCKMAP) && !(actor->flags & MF_NOBLOCKMAP))
+                    || ((flags & MF_NOSECTOR) && !(actor->flags & MF_NOSECTOR));
+
+  if (update_blockmap)
+    P_UnsetThingPosition(actor);
+
+  actor->flags  |= flags;
+  actor->flags2 |= flags2;
+
+  if (update_blockmap)
+    P_SetThingPosition(actor);
+}
+
+//
+// A_RemoveFlags
+// Removes the specified thing flags from the caller.
+//   args[0]: Flag(s) to remove
+//   args[1]: MBF21 Flag(s) to remove
+//
+void A_RemoveFlags(mobj_t* actor)
+{
+  unsigned int flags, flags2;
+  boolean update_blockmap;
+
+  if (!actor)
+    return;
+
+  flags  = actor->state->args[0];
+  flags2 = actor->state->args[1];
+
+  // unlink/relink the thing from the blockmap if
+  // the NOBLOCKMAP or NOSECTOR flags are removed
+  update_blockmap = ((flags & MF_NOBLOCKMAP) && (actor->flags & MF_NOBLOCKMAP))
+                    || ((flags & MF_NOSECTOR) && (actor->flags & MF_NOSECTOR));
+
+  if (update_blockmap)
+    P_UnsetThingPosition(actor);
+
+  actor->flags  &= ~flags;
+  actor->flags2 &= ~flags2;
+
+  if (update_blockmap)
+    P_SetThingPosition(actor);
 }
 
 //----------------------------------------------------------------------------

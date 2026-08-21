@@ -14,6 +14,37 @@ SDL3 Linux backend under `linux/`.
 
 ## Unreleased
 
+### MBF21: thing flags
+
+`mobjflag2_t` (`p_mobj.h`, from Woof `src/p_mobj.h:207`) with all 19 mbf21 thing
+flags, stored in `mobjinfo_t.flags2` and copied to `mobj_t.flags2` at spawn. Set
+per thing type by the DEHACKED `MBF21 Bits` field, which takes the same mnemonic
+syntax as `Bits` (`LOGRAV|RIP|...`), and at runtime by `A_AddFlags`,
+`A_RemoveFlags` and `A_JumpIfFlagsSet`. `Rip sound` was added alongside
+(`mobjinfo_t.ripsound`).
+
+Behaviour, all of it keeping the existing hardcoded type checks and adding the
+flag beside them, so vanilla things behave exactly as before:
+
+- `MF2_LOGRAV` — eighth gravity in `P_ZMovement`.
+- `MF2_SHORTMRANGE`, `MF2_LONGMELEE`, `MF2_RANGEHALF`, `MF2_HIGHERMPROB` —
+  `P_CheckMissileRange`, previously `MT_VILE` / `MT_UNDEAD` / `MT_CYBORG` etc.
+- `MF2_DMGIGNORED`, `MF2_NOTHRESHOLD` — infighting in `P_DamageMobj`.
+- `MF2_NORADIUSDMG`, `MF2_BOSS`, `MF2_FORCERADIUSDMG` — blast immunity in
+  `PIT_RadiusAttack`.
+- `MF2_BOSS`, `MF2_FULLVOLSOUNDS` — full-volume see and death sounds.
+- `MF2_RIP` — ripper projectiles pass through what they hit (`PIT_CheckThing`).
+- `MF2_MAP07BOSS1/2`, `MF2_E1M8BOSS` … `MF2_E4M8BOSS` — `A_BossDeath`, both the
+  type gate and the 666/667 tag dispatch.
+
+**Savegames from earlier builds will not load.** `mobj_t` is written verbatim, so
+adding `flags2` changed the format. Rather than let an old save be misread,
+`SMACK_SAVE_REV` now rides along in the existing 16-byte version field, so
+`G_DoLoadGame` rejects them with the usual "Different Savegame Version" prompt.
+Bump it whenever a saved struct changes.
+
+This completes MBF21 apart from DSDHacked (unlimited state/thing/sprite arrays).
+
 ### MBF21: weapon codepointers
 
 Ported from Woof (`src/p_pspr.c:1240-1520`): `A_WeaponProjectile`,

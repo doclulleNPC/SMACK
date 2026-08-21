@@ -1011,8 +1011,10 @@ void P_DamageMobj(mobj_t *target,mobj_t *inflictor, mobj_t *source, int damage)
 
   // killough 9/9/98: cleaned up, made more consistent:
 
-  if (source && source != target && source->type != MT_VILE &&
-      (!target->threshold || target->type == MT_VILE) &&
+  if (source && source != target &&
+      source->type != MT_VILE && !(source->flags2 & MF2_DMGIGNORED) &&
+      (!target->threshold ||
+       target->type == MT_VILE || target->flags2 & MF2_NOTHRESHOLD) &&
       ((source->flags ^ target->flags) & MF_FRIEND || 
        monster_infighting || demo_version < 203))
     {

@@ -949,7 +949,7 @@ typedef struct
 // killough 8/9/98: make DEH_BLOCKMAX self-adjusting
 #define DEH_BLOCKMAX (sizeof deh_blocks/sizeof*deh_blocks)  // size of array
 #define DEH_MAXKEYLEN 32 // as much of any key as we'll look at
-#define DEH_MOBJINFOMAX 24 // number of ints in the mobjinfo_t structure (!)
+#define DEH_MOBJINFOMAX 26 // number of ints in the mobjinfo_t structure (!)
 
 // Put all the block header values, and the function to be called when that
 // one is encountered, in this array:
@@ -1008,7 +1008,9 @@ char *deh_mobjinfo[DEH_MOBJINFOMAX] =
   "Action sound",        // .activesound
   "Bits",                // .flags
   "Respawn frame",       // .raisestate
-  "Melee range"          // .meleerange (mbf21)
+  "Melee range",         // .meleerange (mbf21)
+  "MBF21 Bits",          // .flags2 (mbf21)
+  "Rip sound"            // .ripsound (mbf21)
 };
 
 // Strings that are used to indicate flags ("Bits" in mobjinfo)
@@ -1021,6 +1023,35 @@ char *deh_mobjinfo[DEH_MOBJINFOMAX] =
 // Convert array to struct to allow multiple values, make array size variable
 
 #define DEH_MOBJFLAGMAX (sizeof deh_mobjflags/sizeof*deh_mobjflags)
+
+// mbf21 thing-flag mnemonics for the DEHACKED "MBF21 Bits" field.
+// Values must match mobjflag2_t in p_mobj.h.
+static const struct deh_flag_s {
+  char *name;
+  long value;
+} deh_mobjflags_mbf21[] = {
+  {"LOGRAV",        0x00000001},
+  {"SHORTMRANGE",   0x00000002},
+  {"DMGIGNORED",    0x00000004},
+  {"NORADIUSDMG",   0x00000008},
+  {"FORCERADIUSDMG", 0x00000010},
+  {"HIGHERMPROB",   0x00000020},
+  {"RANGEHALF",     0x00000040},
+  {"NOTHRESHOLD",   0x00000080},
+  {"LONGMELEE",     0x00000100},
+  {"BOSS",          0x00000200},
+  {"MAP07BOSS1",    0x00000400},
+  {"MAP07BOSS2",    0x00000800},
+  {"E1M8BOSS",      0x00001000},
+  {"E2M8BOSS",      0x00002000},
+  {"E3M8BOSS",      0x00004000},
+  {"E4M6BOSS",      0x00008000},
+  {"E4M8BOSS",      0x00010000},
+  {"RIP",           0x00020000},
+  {"FULLVOLSOUNDS", 0x00040000},
+};
+#define DEH_MOBJFLAGMBF21MAX (sizeof deh_mobjflags_mbf21/sizeof*deh_mobjflags_mbf21)
+
 
 struct { 
   char *name;
@@ -1299,6 +1330,9 @@ extern void A_JumpIfTargetInSight();
 extern void A_JumpIfTargetCloser();
 extern void A_JumpIfTracerInSight();
 extern void A_JumpIfTracerCloser();
+extern void A_JumpIfFlagsSet();
+extern void A_AddFlags();
+extern void A_RemoveFlags();
 extern void A_WeaponProjectile();
 extern void A_WeaponBulletAttack();
 extern void A_WeaponMeleeAttack();
@@ -1438,6 +1472,9 @@ deh_bexptr deh_bexptrs[] =
   {A_CheckAmmo,             "A_CheckAmmo"},
   {A_RefireTo,              "A_RefireTo"},
   {A_GunFlashTo,            "A_GunFlashTo"},
+  {A_JumpIfFlagsSet,        "A_JumpIfFlagsSet"},
+  {A_AddFlags,              "A_AddFlags"},
+  {A_RemoveFlags,           "A_RemoveFlags"},
 
   // This NULL entry must be the last in the list
   {NULL,             "A_NULL"},  // Ty 05/16/98
@@ -1744,6 +1781,32 @@ void deh_procThing(DEHFILE *fpin, FILE* fpout, char *line)
                   if (fpout) fprintf(fpout, "Bits = 0x%08lX = %ld \n",
                                      value, value);
                 }
+              else
+                if (!strcasecmp(key,"MBF21 Bits") && !value)
+                  {
+                    // mbf21 thing flags, same mnemonic treatment as "bits"
+                    value = 0;
+
+                    for (;(strval = strtok(strval,",+| \t\f\r")); strval = NULL)
+                      {
+                        int iy;
+                        for (iy=0; iy < DEH_MOBJFLAGMBF21MAX; iy++)
+                          if (!strcasecmp(strval,deh_mobjflags_mbf21[iy].name))
+                            {
+                              if (fpout)
+                                fprintf(fpout, "ORed mbf21 value 0x%08lx %s\n",
+                                        deh_mobjflags_mbf21[iy].value, strval);
+                              value |= deh_mobjflags_mbf21[iy].value;
+                              break;
+                            }
+                        if (iy >= DEH_MOBJFLAGMBF21MAX && fpout)
+                          fprintf(fpout, "Could not find mbf21 bit mnemonic %s\n",
+                                  strval);
+                      }
+
+                    if (fpout) fprintf(fpout, "MBF21 Bits = 0x%08lX = %ld \n",
+                                       value, value);
+                  }
               pix = (int *)&mobjinfo[indexnum];
               pix[ix] = (int)value;
               if (fpout) fprintf(fpout,"Assigned %d to %s(%d) at index %d\n",

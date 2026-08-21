@@ -1458,6 +1458,14 @@ typedef struct
   // so it is 0 for every thing until a patch sets it; A_MonsterMeleeAttack
   // reads 0 as "use MELEERANGE".
   int meleerange;
+
+  // mbf21 thing flags (see mobjflag2_t), from DEHACKED "MBF21 Bits".
+  // Zero-filled like meleerange above.
+  int flags2;
+
+  // mbf21: sound a ripper projectile makes when it tears through something,
+  // from DEHACKED "Rip sound". Zero means silent.
+  int ripsound;
 } mobjinfo_t;
 
 // See p_mobj_h for addition more technical info
