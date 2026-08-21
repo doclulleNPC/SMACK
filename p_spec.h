@@ -75,6 +75,11 @@
 #define PUSH_MASK       0x200
 #define PUSH_SHIFT      9
 
+// mbf21 instant-death sectors (Woof src/p_spec.h:85). The DAMAGE_MASK bits
+// select the variant; see P_PlayerInSpecialSector.
+#define DEATH_MASK           0x1000  // bit 12: kills the player
+#define KILL_MONSTERS_MASK   0x2000  // bit 13: kills grounded monsters
+
 //jff 02/04/98 Define masks, shifts, for fields in 
 // generalized linedef types
 

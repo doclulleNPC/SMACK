@@ -14,6 +14,18 @@ SDL3 Linux backend under `linux/`.
 
 ## Unreleased
 
+### MBF21: instant-death sectors
+
+- `DEATH_MASK` (bit 12) and `KILL_MONSTERS_MASK` (bit 13) added to `p_spec.h`,
+  following Woof (`src/p_spec.h:85`).
+- `P_PlayerInSpecialSector` (`p_spec.c`) handles `DEATH_MASK` ahead of the ordinary
+  nukage switch, with the damage bits selecting the variant: 0 kills unless the
+  player is invulnerable or wearing a radiation suit, 1 kills unconditionally,
+  2 and 3 kill every player and end the level (normal / secret exit).
+  Being checked first, these sectors also ignore the nukage-disabling cheat.
+- `P_MobjThinker` (`p_mobj.c`) handles `KILL_MONSTERS_MASK`: shootable,
+  non-floating, grounded non-players are killed (Woof `src/p_mobj.c:807`).
+
 ### MBF21: line flags
 
 - `ML_BLOCKLANDMONSTERS` (bit 12) and `ML_BLOCKPLAYERS` (bit 13) added to

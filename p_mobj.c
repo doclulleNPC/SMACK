@@ -30,6 +30,7 @@ rcsid[] = "$Id: p_mobj.c,v 1.26 1998/05/16 00:24:12 phares Exp $";
 #include "p_maputl.h"
 #include "p_map.h"
 #include "p_tick.h"
+#include "p_spec.h"   // mbf21 KILL_MONSTERS_MASK
 #include "r_interp.h"   // MOD: P_ResetInterpolation
 #include "sounds.h"
 #include "st_stuff.h"
@@ -642,6 +643,25 @@ void P_MobjThinker (mobj_t* mobj)
 	else
 	  mobj->intflags &= ~MIF_FALLING, mobj->gear = 0;  // Reset torque
       }
+
+  // mbf21 monster-killing sectors (Woof src/p_mobj.c:807). Only shootable,
+  // non-floating, grounded non-players are affected.
+  {
+    sector_t *sector = mobj->subsector->sector;
+
+    if (sector->special & KILL_MONSTERS_MASK &&
+	mobj->z == mobj->floorz &&
+	!mobj->player &&
+	mobj->flags & MF_SHOOTABLE &&
+	!(mobj->flags & MF_FLOAT))
+      {
+	P_DamageMobj(mobj, NULL, NULL, 10000);
+
+	// must have been removed
+	if (mobj->thinker.function != P_MobjThinker)
+	  return;
+      }
+  }
 
   // cycle through states,
   // calling action functions at transitions

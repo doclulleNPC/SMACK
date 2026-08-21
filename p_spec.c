@@ -2180,7 +2180,37 @@ void P_PlayerInSpecialSector (player_t *player)
     }
   else //jff 3/14/98 handle extended sector types for secrets and damage
     {
-      if (enable_nuke)  // killough 12/98: nukage disabling cheat
+      // mbf21 instant-death sectors (Woof src/p_spec.c:2481). The damage bits
+      // pick the variant: 0 kills unless invulnerable or radiation-suited,
+      // 1 kills regardless, 2 and 3 kill every player and end the level
+      // (2 normal exit, 3 secret exit).
+      if (sector->special & DEATH_MASK)
+	{
+	  int i;
+
+	  switch ((sector->special & DAMAGE_MASK) >> DAMAGE_SHIFT)
+	    {
+	    case 0:
+	      if (!player->powers[pw_invulnerability] &&
+		  !player->powers[pw_ironfeet])
+		P_DamageMobj(player->mo, NULL, NULL, 10000);
+	      break;
+	    case 1:
+	      P_DamageMobj(player->mo, NULL, NULL, 10000);
+	      break;
+	    case 2:
+	    case 3:
+	      for (i = 0; i < MAXPLAYERS; i++)
+		if (playeringame[i])
+		  P_DamageMobj(players[i].mo, NULL, NULL, 10000);
+	      if (((sector->special & DAMAGE_MASK) >> DAMAGE_SHIFT) == 2)
+		G_ExitLevel();
+	      else
+		G_SecretExitLevel();
+	      break;
+	    }
+	}
+      else if (enable_nuke)  // killough 12/98: nukage disabling cheat
 	switch ((sector->special&DAMAGE_MASK)>>DAMAGE_SHIFT)
 	  {
 	  case 0: // no damage
