@@ -33,6 +33,10 @@ typedef struct
   int         readystate;
   int         atkstate;
   int         flashstate;
+  // mbf21: ammo used per shot, settable via DEHACKED "Ammo per shot".
+  // d_items.c initialises the table positionally and stops short of this
+  // field, so it is 0 until a patch sets it.
+  int         ammopershot;
 } weaponinfo_t;
 
 extern  weaponinfo_t    weaponinfo[NUMWEAPONS];

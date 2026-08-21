@@ -1159,7 +1159,8 @@ char *deh_weapon[] =
   "Select frame",   // .downstate
   "Bobbing frame",  // .readystate
   "Shooting frame", // .atkstate
-  "Firing frame"    // .flashstate
+  "Firing frame",   // .flashstate
+  "Ammo per shot"   // .ammopershot (mbf21)
 };
 
 // CHEATS - Dehacked block name = "Cheat"
@@ -1298,6 +1299,16 @@ extern void A_JumpIfTargetInSight();
 extern void A_JumpIfTargetCloser();
 extern void A_JumpIfTracerInSight();
 extern void A_JumpIfTracerCloser();
+extern void A_WeaponProjectile();
+extern void A_WeaponBulletAttack();
+extern void A_WeaponMeleeAttack();
+extern void A_WeaponSound();
+extern void A_WeaponAlert();
+extern void A_WeaponJump();
+extern void A_ConsumeAmmo();
+extern void A_CheckAmmo();
+extern void A_RefireTo();
+extern void A_GunFlashTo();
 extern void A_Die();             // killough 11/98
 extern void A_Spawn();           // killough 11/98
 extern void A_Turn();            // killough 11/98
@@ -1417,6 +1428,16 @@ deh_bexptr deh_bexptrs[] =
   {A_JumpIfTargetCloser,    "A_JumpIfTargetCloser"},
   {A_JumpIfTracerInSight,   "A_JumpIfTracerInSight"},
   {A_JumpIfTracerCloser,    "A_JumpIfTracerCloser"},
+  {A_WeaponProjectile,      "A_WeaponProjectile"},
+  {A_WeaponBulletAttack,    "A_WeaponBulletAttack"},
+  {A_WeaponMeleeAttack,     "A_WeaponMeleeAttack"},
+  {A_WeaponSound,           "A_WeaponSound"},
+  {A_WeaponAlert,           "A_WeaponAlert"},
+  {A_WeaponJump,            "A_WeaponJump"},
+  {A_ConsumeAmmo,           "A_ConsumeAmmo"},
+  {A_CheckAmmo,             "A_CheckAmmo"},
+  {A_RefireTo,              "A_RefireTo"},
+  {A_GunFlashTo,            "A_GunFlashTo"},
 
   // This NULL entry must be the last in the list
   {NULL,             "A_NULL"},  // Ty 05/16/98
@@ -2070,7 +2091,10 @@ void deh_procWeapon(DEHFILE *fpin, FILE* fpout, char *line)
                 if (!strcasecmp(key,deh_weapon[5]))  // Firing frame
                   weaponinfo[indexnum].flashstate = value;
                 else
-                  if (fpout) fprintf(fpout,"Invalid weapon string index for '%s'\n",key);
+                  if (!strcasecmp(key,deh_weapon[6]))  // Ammo per shot (mbf21)
+                    weaponinfo[indexnum].ammopershot = value;
+                  else
+                    if (fpout) fprintf(fpout,"Invalid weapon string index for '%s'\n",key);
     }
   return;
 }

@@ -15,7 +15,7 @@ const char version_date[] = __DATE__;
 // Bumped automatically on commit -- see tools/bump-version.sh and
 // tools/hooks/pre-commit. Keep the literal on one line and in this exact
 // shape; the bump script rewrites it with sed.
-const char smack_version[] = "0.8.0";
+const char smack_version[] = "0.9.0";
 
 const char version_name[] = "christmas"; // sf : version names
                                          // at the suggestion of mystican

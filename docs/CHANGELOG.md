@@ -14,6 +14,28 @@ SDL3 Linux backend under `linux/`.
 
 ## Unreleased
 
+### MBF21: weapon codepointers
+
+Ported from Woof (`src/p_pspr.c:1240-1520`): `A_WeaponProjectile`,
+`A_WeaponBulletAttack`, `A_WeaponMeleeAttack`, `A_WeaponSound`, `A_WeaponAlert`,
+`A_WeaponJump`, `A_ConsumeAmmo`, `A_CheckAmmo`, `A_RefireTo`, `A_GunFlashTo`.
+
+- `weaponinfo_t.ammopershot` + DEHACKED `Ammo per shot` in the Weapon block.
+  `d_items.c` initialises the table positionally and stops short of the field, so
+  it is 0 until a patch sets it — which is what `A_ConsumeAmmo`/`A_CheckAmmo`
+  treat as "fall back to args".
+- `P_SetPspritePtr` addresses a psprite by pointer instead of layer index.
+- Woof’s `A_Recoil` is its view-pitch recoil, which SMACK does not have. The
+  parameterized attacks instead call `P_WeaponRecoil`, the recoil half of
+  `A_FireSomething` factored out, so they thrust the player exactly as SMACK’s
+  built-in weapons do (still gated on the `weapon_recoil` cvar).
+- `S_StartSoundOrigin`/`S_StartSoundEx` become plain `S_StartSound`; a NULL origin
+  is how SMACK plays a sound at full volume, which is what `A_WeaponSound`’s
+  second arg selects.
+- Woof’s `SavePlayerAngle`/`AddToTicAngle` view bookkeeping is dropped —
+  `A_WeaponMeleeAttack` assigns the turn-to-target angle directly, as SMACK’s own
+  `A_Punch` does.
+
 ### MBF21: monster codepointers
 
 The parameterized monster pointers, ported from Woof (`src/p_enemy.c:2865-3271`):
