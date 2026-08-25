@@ -55,15 +55,33 @@ boolean P_SetMobjState(mobj_t* mobj,statenum_t state)
 
   // killough 4/9/98: remember states seen, to detect cycles:
 
-  static statenum_t seenstate_tab[NUMSTATES]; // fast transition table
-  statenum_t *seenstate = seenstate_tab;      // pointer to table
+  // DSDHacked: state numbers are no longer bounded by NUMSTATES, so these
+  // two grow with num_states instead of being fixed-size. Grown lazily here
+  // rather than sized once at startup because that's simplest and this check
+  // is nearly free; in practice num_states is stable well before the first
+  // P_SetMobjState call, since DEHACKED only runs during startup.
+  static statenum_t *seenstate_tab;           // fast transition table
+  static statenum_t *tempstate;               // for use with recursion
+  static int seenstate_cap;
+  statenum_t *seenstate;                      // pointer to table
   static int recursion;                       // detects recursion
   statenum_t i = state;                       // initial state
   boolean ret = true;                         // return value
-  statenum_t tempstate[NUMSTATES];            // for use with recursion
+
+  if (num_states > seenstate_cap)
+    {
+      int oldcap = seenstate_cap;
+      seenstate_cap = num_states;
+      seenstate_tab = realloc(seenstate_tab, seenstate_cap * sizeof *seenstate_tab);
+      tempstate     = realloc(tempstate,     seenstate_cap * sizeof *tempstate);
+      // realloc() doesn't zero the newly grown tail, and seenstate_tab must
+      // stay all-zero between calls (see the "erase memory" loop below)
+      memset(seenstate_tab + oldcap, 0, (seenstate_cap - oldcap) * sizeof *seenstate_tab);
+    }
+  seenstate = seenstate_tab;
 
   if (recursion++)                            // if recursion detected,
-    memset(seenstate=tempstate,0,sizeof tempstate); // clear state table
+    memset(seenstate=tempstate,0,seenstate_cap*sizeof *tempstate); // clear state table
 
   do
     {
@@ -849,20 +867,22 @@ int P_FindDoomedNum(unsigned type)
 
   if (!hash)
     {
-      hash = Z_Malloc(sizeof *hash * NUMMOBJTYPES, PU_CACHE, (void **) &hash);
-      for (i=0; i<NUMMOBJTYPES; i++)
-	hash[i].first = NUMMOBJTYPES;
-      for (i=0; i<NUMMOBJTYPES; i++)
+      // DSDHacked: sized to num_mobj_types, not the fixed NUMMOBJTYPES,
+      // so a DEHACKED-added thing type's doomednum is found by this hash too.
+      hash = Z_Malloc(sizeof *hash * num_mobj_types, PU_CACHE, (void **) &hash);
+      for (i=0; i<num_mobj_types; i++)
+	hash[i].first = num_mobj_types;
+      for (i=0; i<num_mobj_types; i++)
 	if (mobjinfo[i].doomednum != -1)
 	  {
-	    unsigned h = (unsigned) mobjinfo[i].doomednum % NUMMOBJTYPES;
+	    unsigned h = (unsigned) mobjinfo[i].doomednum % num_mobj_types;
 	    hash[i].next = hash[h].first;
 	    hash[h].first = i;
 	  }
     }
   
-  i = hash[type % NUMMOBJTYPES].first;
-  while (i < NUMMOBJTYPES && mobjinfo[i].doomednum != type)
+  i = hash[type % num_mobj_types].first;
+  while (i < num_mobj_types && mobjinfo[i].doomednum != type)
     i = hash[i].next;
   return i;
 }
@@ -1106,7 +1126,7 @@ mobj_t *P_SpawnMapThing (mapthing_t* mthing)
   // Do not abort because of an unknown thing. Ignore it, but post a
   // warning message for the player.
 
-  if (i == NUMMOBJTYPES)
+  if (i == num_mobj_types)
     {
       doom_printf("Unknown Thing type %i at (%i, %i)",
 	      mthing->type, mthing->x, mthing->y);

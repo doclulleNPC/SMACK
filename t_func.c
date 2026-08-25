@@ -401,7 +401,7 @@ void SF_Spawn()
     }
   
   // invalid object to spawn
-  if(objtype < 0 || objtype >= NUMMOBJTYPES)
+  if(objtype < 0 || objtype >= num_mobj_types)  // DSDHacked
     { script_error("unknown object type: %i\n", objtype); return; }
   
   t_return.type = svt_mobj;

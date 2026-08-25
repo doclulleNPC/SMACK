@@ -119,6 +119,49 @@ with `A_AddFlags` / `A_RemoveFlags` / `A_JumpIfFlagsSet`, and DSDHacked.
 - `P_MobjThinker` (`p_mobj.c`) handles `KILL_MONSTERS_MASK`: shootable,
   non-floating, grounded non-players are killed (Woof `src/p_mobj.c:807`).
 
+### DSDHacked: unlimited state and thing arrays
+
+`d_dsdh.c`/`.h` (new), ported from dsda-doom/Woof's DSDHacked feature
+(originally by Xaser Acheron/Kraflab). `states[NUMSTATES]` and
+`mobjinfo[NUMMOBJTYPES]` are no longer fixed-size: `info.c`'s compile-time
+tables are renamed `original_states`/`original_mobjinfo`, and `states`/
+`mobjinfo` become malloc'd copies (`DSDH_Init`, called at the top of
+`D_DoomMain`) that grow on demand as `DSDH_StateTranslate`/`DSDH_ThingTranslate`
+hand out fresh slots for DEHACKED indices beyond the original range. `NUMSTATES`/
+`NUMMOBJTYPES` remain as compile-time constants — they still name the fixed
+`statenum_t`/`mobjtype_t` enumerators — so every runtime loop bound that used to
+read one of them now reads `num_states`/`num_mobj_types` instead
+(`P_SetMobjState`'s cycle-detection tables and `P_SpawnMobj`'s doomednum hash in
+`p_mobj.c`, FraggleScript's `spawnobject` bounds check in `t_func.c`, and the
+several DEHACKED bounds checks in `d_deh.c` below).
+
+One deliberate simplification versus Woof: Woof's index-translation tables are
+hash maps (`src/m_hashmap.c`), because DSDHacked patches can reference
+arbitrarily large frame/thing numbers and it wants O(1) lookups. SMACK has no
+hash table of its own and this only runs while parsing DEHACKED patches at
+startup, so `d_dsdh.c` uses a linear-scan array instead — simplest, and plenty
+fast for the handful of extended entries any real patch defines.
+
+**This also fixes two pre-existing memory-corruption bugs**, found while wiring
+up the translation: `deh_procThing` (the DEHACKED `Thing` block) had *no* bounds
+check at all before writing `mobjinfo[indexnum]`, and `deh_procFrame` (the
+`Frame` block) printed a warning for an out-of-range index but then wrote
+`states[indexnum]` anyway — so on a stock (pre-DSDHacked) build, any DEHACKED
+patch defining a `Thing`/`Frame` numbered past the end of the original table
+silently corrupted memory beyond it. Both now route through
+`DSDH_ThingTranslate`/`DSDH_StateTranslate`, which is exactly the fix and gets
+the index a real, valid slot instead. A third, unrelated out-of-bounds read in
+`deh_procPointer` (a loop over the ~100-entry `deh_bexptrs[]` bounded by
+`NUMSTATES`, ~970) was fixed in passing, bounded by its own terminating entry
+like every other walk of that array.
+
+**Scope**: states and things only, per DSDHacked's core feature and this fork's
+need — sprite names (`sprnames[NUMSPRITES]`) and the sound table
+(`S_sfx[NUMSFX]`) remain fixed-size, so a patch that both extends the state
+table *and* needs new sprite/sound lump names of its own is only partly
+supported: the extra states work, but referencing a sprite/sound number beyond
+the original tables will not.
+
 ### MBF21: line flags
 
 - `ML_BLOCKLANDMONSTERS` (bit 12) and `ML_BLOCKPLAYERS` (bit 13) added to

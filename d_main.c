@@ -42,6 +42,7 @@ static const char rcsid[] = "$Id: d_main.c,v 1.47 1998/05/16 09:16:51 killough E
 
 #include "doomdef.h"
 #include "d_iwad.h"
+#include "d_dsdh.h"   // DSDHacked: unlimited state/thing arrays
 #include "doomstat.h"
 #include "dstrings.h"
 #include "sounds.h"
@@ -1286,6 +1287,10 @@ void D_DoomMain(void)
   char file[PATH_MAX+1];      // killough 3/22/98
 
   setbuf(stdout,NULL);
+
+  // DSDHacked: give states[]/mobjinfo[] room to grow before anything
+  // (including DEHACKED processing, later in this function) touches them.
+  DSDH_Init();
 
   FindResponseFile();         // Append response file arguments to command-line
 

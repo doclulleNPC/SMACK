@@ -76,7 +76,8 @@ int dehfgetc(DEHFILE *fp)
 boolean deh_pars = FALSE; // in wi_stuff to allow pars in modified games
 boolean deh_loaded = false; // sf
 
-// #include "d_deh.h" -- we don't do that here but we declare the
+// #include "d_deh.h"
+#include "d_dsdh.h"   // DSDHacked: unlimited state/thing arrays -- we don't do that here but we declare the
 // variables.  This externalizes everything that there is a string
 // set for in the language files.  See d_deh.h for detailed comments,
 // original English values etc.  These are set to the macro values,
@@ -1662,12 +1663,11 @@ void deh_procBexCodePointers(DEHFILE *fpin, FILE* fpout, char *line)
 
       if (fpout) fprintf(fpout,"Processing pointer at index %d: %s\n",
                          indexnum, mnemonic);
-      if (indexnum < 0 || indexnum >= NUMSTATES)
-        {
-          if (fpout) fprintf(fpout,"Bad pointer number %d of %d\n",
-                             indexnum, NUMSTATES);
-          return; // killough 10/98: fix SegViol
-        }
+      // DSDHacked: give an out-of-range index a real slot instead of
+      // dropping the line (a valid BEX file can point a codepointer at a
+      // frame a companion DEHACKED Frame block only just extended for).
+      indexnum = DSDH_StateTranslate(indexnum);
+
       strcpy(key,"A_");  // reusing the key area to prefix the mnemonic
       strcat(key,ptr_lstrip(mnemonic));
 
@@ -1727,6 +1727,11 @@ void deh_procThing(DEHFILE *fpin, FILE* fpout, char *line)
   // Note that the mobjinfo[] array is base zero, but object numbers
   // in the dehacked file start with one.  Grumble.
   --indexnum;
+
+  // DSDHacked: this had no bounds check at all -- any "Thing N" block with
+  // N-1 outside the original table wrote straight past the end of
+  // mobjinfo[]. DSDH_ThingTranslate() gives it a real slot.
+  indexnum = DSDH_ThingTranslate(indexnum);
 
   // now process the stuff
   // Note that for Things we can look up the key and use its offset
@@ -1837,8 +1842,11 @@ void deh_procFrame(DEHFILE *fpin, FILE* fpout, char *line)
   // killough 8/98: allow hex numbers in input:
   sscanf(inbuffer,"%s %i",key, &indexnum);
   if (fpout) fprintf(fpout,"Processing Frame at index %d: %s\n",indexnum,key);
-  if (indexnum < 0 || indexnum >= NUMSTATES)
-    if (fpout) fprintf(fpout,"Bad frame number %d of %d\n",indexnum, NUMSTATES);
+  // DSDHacked: indexnum used to be written into states[] completely
+  // unchecked past this point whenever it was >= NUMSTATES -- a DEHACKED
+  // patch defining a frame beyond the original table silently corrupted
+  // memory past the end of it. DSDH_StateTranslate() gives it a real slot.
+  indexnum = DSDH_StateTranslate(indexnum);
 
   while (!feof(fpin) && *inbuffer && (*inbuffer != ' '))
     {
@@ -1939,12 +1947,9 @@ void deh_procPointer(DEHFILE *fpin, FILE* fpout, char *line) // done
     }
 
   if (fpout) fprintf(fpout,"Processing Pointer at index %d: %s\n",indexnum, key);
-  if (indexnum < 0 || indexnum >= NUMSTATES)
-    {
-      if (fpout)
-        fprintf(fpout,"Bad pointer number %d of %d\n",indexnum, NUMSTATES);
-      return;
-    }
+  // DSDHacked: the destination frame; the source ("value", below) is
+  // deliberately left bounded to the original table -- see the comment there.
+  indexnum = DSDH_StateTranslate(indexnum);
 
   while (!feof(fpin) && *inbuffer && (*inbuffer != ' '))
     {
@@ -1969,7 +1974,12 @@ void deh_procPointer(DEHFILE *fpin, FILE* fpout, char *line) // done
           states[indexnum].action = deh_codeptr[value];
           if (fpout) fprintf(fpout," - applied %p from codeptr[%ld] to states[%d]\n",deh_codeptr[value],value,indexnum);
           // Write BEX-oriented line to match:
-          for (i=0;i<NUMSTATES;i++)
+          // Pre-existing bug fixed in passing: this walked deh_bexptrs[]
+          // (~100 entries) up to NUMSTATES (~970), reading well past the
+          // real end of that array whenever no match was found. Bound it by
+          // its own terminating NULL entry instead, same as every other walk
+          // of deh_bexptrs[] in this file.
+          for (i=0; deh_bexptrs[i].lookup != NULL; i++)
             {
               if (deh_bexptrs[i].cptr == deh_codeptr[value])
                 {

@@ -1237,8 +1237,13 @@ typedef struct
   int         args[MAXSTATEARGS]; // mbf21 codepointer arguments (Args1..Args8)
 } state_t;
 
-// these are in info.c
-extern state_t  states[NUMSTATES];
+// these are in info.c (original_states -- see d_dsdh.c). DSDHacked:
+// NUMSTATES is the size of that original table, not a fixed bound any more --
+// states may hold up to num_states entries. NUMSTATES stays around because it
+// still names the fixed statenum_t enumerators (S_PLAY, S_PUNCH, ...) and
+// bounds original_states[]/deh_codeptr[] in d_deh.c.
+extern state_t *states;
+extern int      num_states;
 extern char *sprnames[];             // 1/17/98 killough
 
 // ********************************************************************
@@ -1468,8 +1473,10 @@ typedef struct
   int ripsound;
 } mobjinfo_t;
 
-// See p_mobj_h for addition more technical info
-extern mobjinfo_t mobjinfo[NUMMOBJTYPES];
+// See p_mobj_h for addition more technical info. DSDHacked: see the states
+// comment above -- mobjinfo may hold up to num_mobj_types entries now.
+extern mobjinfo_t *mobjinfo;
+extern int         num_mobj_types;
 
 #endif
 

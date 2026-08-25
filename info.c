@@ -190,7 +190,9 @@ void A_Mushroom();        // killough 10/98: mushroom effect
 //
 // killough 11/98: cleaned up, since we don't need to accomodate C++
 
-state_t states[NUMSTATES] = {
+// DSDHacked (d_dsdh.c): the runtime `states` table starts as a copy of
+// this one and grows from there; this array itself never changes.
+state_t original_states[NUMSTATES] = {
   {SPR_TROO,0,-1,NULL,S_NULL},  // S_NULL
   {SPR_SHTG,4,0,A_Light0,S_NULL}, // S_LIGHTDONE
   {SPR_PUNG,0,1,A_WeaponReady,S_PUNCH}, // S_PUNCH
@@ -1277,7 +1279,8 @@ state_t states[NUMSTATES] = {
 //
 // This goes on for the next 3000+ lines...
 
-mobjinfo_t mobjinfo[NUMMOBJTYPES] = {
+// DSDHacked (d_dsdh.c): see original_states above.
+mobjinfo_t original_mobjinfo[NUMMOBJTYPES] = {
   {   // MT_PLAYER
     -1,   // doomednum
     S_PLAY,   // spawnstate

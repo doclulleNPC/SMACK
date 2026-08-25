@@ -213,6 +213,7 @@ copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run\ID0\smack.wad"</Command
     <ClCompile Include="..\d_iwad.c" />
     <ClCompile Include="..\r_interp.c" />
     <ClCompile Include="..\p_umapinfo.c" />
+    <ClCompile Include="..\d_dsdh.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\am_map.h" />
@@ -225,6 +226,7 @@ copy /y "$(ProjectDir)..\smack.wad" "$(ProjectDir)..\run\ID0\smack.wad"</Command
     <ClInclude Include="..\d_french.h" />
     <ClInclude Include="..\d_items.h" />
     <ClInclude Include="..\d_iwad.h" />
+    <ClInclude Include="..\d_dsdh.h" />
     <ClInclude Include="..\d_main.h" />
     <ClInclude Include="..\d_net.h" />
     <ClInclude Include="..\d_player.h" />
