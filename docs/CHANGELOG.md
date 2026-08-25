@@ -14,6 +14,76 @@ SDL3 Linux backend under `linux/`.
 
 ## Unreleased
 
+### Widescreen
+
+The render framebuffer now widens to match the real window/display aspect
+ratio instead of always being a fixed 640x400 (classic 8:5) image stretched
+to whatever window size the player picked. `deltawidth` (new global,
+`doomdef.c`/`.h`) is `(SCREENWIDTH - BASE_WIDTH) / 2`, 0 at the classic aspect.
+
+- `linux/i_video.c`'s `I_CreateWindowAndRenderer` derives `SCREENWIDTH` from
+  `SDL_GetRenderOutputSize` (the real output pixels, correct for a fullscreen
+  window even when that differs from what was requested) once the window
+  exists, clamped so it never goes narrower than the classic aspect ratio
+  (widescreen only ever shows more at the sides) and never exceeds
+  `MAX_SCREENWIDTH`, which was raised from 640 to 1024 to give the wider
+  framebuffer room. `V_Init()` (now idempotent -- frees its previous buffers
+  before reallocating) runs again here to resize `screens[]`, since the
+  startup call in `d_main.c` runs before the real aspect ratio is known and
+  sizes it at the classic width. `I_ResetScreen` sets `setsizeneeded` so a
+  live graphics-mode reset (e.g. a fullscreen toggle) re-derives everything.
+- `R_InitTextureMapping` (`r_main.c`) widens the field of view to match, the
+  Woof way (`src/r_main.c:318-353`): when the view genuinely fills a widened
+  screen, `fov' = 2*atan(tan(fov/2) * width_ratio)`, where `width_ratio` is
+  how much wider `centerxfrac` is than its classic reference. Without this,
+  a wider screen would just render the same 90-degree view at higher
+  resolution rather than showing more of the world -- the whole point.
+- Everything downstream (BSP/segs/plane/things column drawers, `screens[]`
+  row-stride math in `v_video.c`, the crosshair/message centering in
+  `hu_stuff.c`, the graphical HUD in `hu_over.c`, the automap frame, the
+  aidoom-style 50% status bar, the intermission/finale drawing in
+  `wi_stuff.c`/`f_finale.c`) was already `SCREENWIDTH`-relative from earlier
+  groundwork and needed no changes -- it turns out most of the engine was
+  already prepared for this. The one straggler: `hu_leveltime`'s widget
+  position, initialised at a `BASE_WIDTH`-relative constant (a static
+  initializer can't reference the runtime `deltawidth`), now gets shifted by
+  `deltawidth` once in `HU_WidgetsInit`.
+- Windowed (sub-fullscreen) screen sizes deliberately keep their exact
+  pre-widescreen positioning, pixel for pixel -- this pass only widens the
+  fullscreen tier. `R_InitBuffer`'s view-margin formula and the
+  `R_FillBackScreen`/`R_DrawViewBorder` border-skip conditions (`r_draw.c`)
+  now reference `BASE_WIDTH` rather than the live `SCREENWIDTH` for the
+  windowed case, so a widened screen doesn't change what a windowed view
+  looks like. The corner-patch drawing in those two functions was never
+  written to handle a zero margin on one side and a real one on the other
+  (which the largest windowed size -- `scaledviewwidth == BASE_WIDTH` -- would
+  otherwise hit once the live screen is wider), so it keeps the same
+  historical skip condition rather than risk it. One accepted consequence: at
+  that specific windowed size, the extra widescreen margin is not filled with
+  anything, unlike the genuine fullscreen tier.
+- Also fixed in passing, found while chasing a crash this work exposed:
+  `R_DrawFuzzColumn`'s `RANGECHECK` bounds guard (`r_draw.c`) compared the
+  pixel-space `dc_x`/`dc_yh` against the base-space `SCREENWIDTH`/
+  `SCREENHEIGHT` instead of `MAX_SCREENWIDTH`/`MAX_SCREENHEIGHT`, unlike every
+  sibling column drawer -- a false-positive `I_Error` for any fuzz (partial
+  invisibility) column in the right half of the screen, in a `RANGECHECK`
+  build. Harmless in a normal release build (the code compiles out entirely),
+  which is presumably why it went unnoticed.
+- The duplicate, dead `#define BASE_WIDTH 800` in `doomdef.h` (an old
+  DOS-era leftover, shadowed by the real `BASE_WIDTH 320` defined later in
+  the same file) was removed while working in this area.
+
+Verified headlessly (`SDL_VIDEODRIVER=dummy`) across 640x400 (classic), 16:9,
+21:9 and a narrower-than-classic 800x600, at three screen-size tiers (small
+windowed, largest windowed, fullscreen), each run through a full demo
+playback with no crash. Not verified visually -- nothing here has been seen
+rendered on an actual display.
+
+Outstanding: only the fullscreen 3D view widens. Automap text overlays, the
+menu background, and the classic text-overlay HUD (screensize 8) were not
+individually audited for centering and may not be perfectly positioned in
+the new widescreen margin, though nothing found so far draws outside it.
+
 ### MBF21: thing flags
 
 `mobjflag2_t` (`p_mobj.h`, from Woof `src/p_mobj.h:207`) with all 19 mbf21 thing

@@ -333,10 +333,18 @@ void R_DrawFuzzColumn(void)
   if (count < 0) 
     return; 
     
-#ifdef RANGECHECK 
-  if ((unsigned) dc_x >= SCREENWIDTH
-      || dc_yl < 0 
-      || dc_yh >= SCREENHEIGHT)
+#ifdef RANGECHECK
+  // Pre-existing bug fixed in passing: this compared the pixel-space dc_x/
+  // dc_yh against the base-space SCREENWIDTH/SCREENHEIGHT instead of the
+  // MAX_SCREENWIDTH/MAX_SCREENHEIGHT ceiling every sibling column drawer
+  // (R_DrawColumn and friends, above) correctly uses -- a false positive
+  // for any dc_x past the base width, e.g. the right half of the screen at
+  // hires. Only ever surfaced in a RANGECHECK build with a fuzz column
+  // (partial invisibility) actually on screen there, which is presumably
+  // why it went unnoticed.
+  if ((unsigned) dc_x >= MAX_SCREENWIDTH
+      || dc_yl < 0
+      || dc_yh >= MAX_SCREENHEIGHT)
     I_Error ("R_DrawFuzzColumn: %i to %i at %i",
              dc_yl, dc_yh, dc_x);
 #endif
@@ -664,8 +672,17 @@ void R_DrawTLSpan (void)
 //
 
 void R_InitBuffer(int width, int height)
-{ 
-  int i; 
+{
+  int i;
+  // Widescreen: the reference "full width" for centring a windowed
+  // (sub-fullscreen) view stays the classic BASE_WIDTH, not the live
+  // (possibly widened) SCREENWIDTH -- windowed screen sizes keep their
+  // pre-widescreen positioning exactly, unchanged pixel for pixel. At the
+  // fullscreen tier width == SCREENWIDTH, so the margin is 0 either way,
+  // and R_FillBackScreen's border skip (scaledviewwidth == SCREENWIDTH)
+  // is what actually decides "is this fullscreen" -- this only has to get
+  // the *windowed* case right.
+  int refwidth = (width == SCREENWIDTH) ? SCREENWIDTH : BASE_WIDTH;
 
   linesize = (SCREENWIDTH << hires);    // killough 11/98
 
@@ -673,7 +690,7 @@ void R_InitBuffer(int width, int height)
   //  e.g. smaller view windows
   //  with border and/or status bar.
 
-  viewwindowx = (SCREENWIDTH-width) >> !hires;  // killough 11/98
+  viewwindowx = (refwidth-width) >> !hires;  // killough 11/98
 
   // Column offset. For windows.
 
@@ -706,7 +723,22 @@ void R_FillBackScreen (void)
   int viewwindowx = x >> hires, viewwindowy = y >> hires;  // killough 11/98
   patch_t *patch;
 
-  if (scaledviewwidth == 320)
+  // Widescreen: this used to be a single "== 320" (== BASE_WIDTH) check,
+  // which meant two different things at once pre-widescreen -- "genuinely
+  // fullscreen" and "windowed screen size slider at its classic max" were
+  // the same case, since scaledviewwidth==SCREENWIDTH==BASE_WIDTH==320
+  // always. Now that SCREENWIDTH can exceed BASE_WIDTH they're not: the
+  // windowed-max size still has scaledviewwidth==BASE_WIDTH but its view
+  // sits flush against the left edge (viewwindowx==0, see R_InitBuffer),
+  // and the patch-tiling loops below assume an 8px margin exists on every
+  // side whenever they run at all -- they were never written to draw a
+  // border with zero margin on one side and a real one on the other, so
+  // still skip that case exactly as before rather than risk it. Only the
+  // genuine fullscreen tier (scaledviewheight == SCREENHEIGHT; the windowed
+  // formula (setblocks*168/10)&~7 tops out at 168, so this is unambiguous)
+  // is the new case that widescreen adds here, and it needs no border
+  // either -- the 3D view already fills the whole screen.
+  if (scaledviewwidth == BASE_WIDTH || scaledviewheight == SCREENHEIGHT)
     return;
 
   // killough 11/98: use the function in m_menu.c
@@ -782,7 +814,8 @@ void R_DrawViewBorder(void)
 { 
   int side, ofs, i;
  
-  if (scaledviewwidth == SCREENWIDTH) 
+  // Widescreen: see R_FillBackScreen's comment above -- same fix, same reason.
+  if (scaledviewwidth == BASE_WIDTH || scaledviewheight == SCREENHEIGHT)
     return;
 
   // copy top

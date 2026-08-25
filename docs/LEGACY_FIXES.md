@@ -434,11 +434,14 @@ really is drawing distinct images inside a single 28.6 ms tic.
 
 ---
 
-## Next: widescreen, the way Woof does it
+## Widescreen, the way Woof does it
 
-`SCREENWIDTH`/`SCREENHEIGHT` are runtime variables now and `BASE_WIDTH`/
-`BASE_HEIGHT` name the fixed 320x200 layout space, which is the groundwork.
-The remaining work should follow Woof rather than be invented -- checkouts of
+Done -- see the Changelog's "Widescreen" entry for the implementation. This
+section is kept as the design record.
+
+`SCREENWIDTH`/`SCREENHEIGHT` were made runtime variables first (earlier
+groundwork), with `BASE_WIDTH`/`BASE_HEIGHT` naming the fixed 320x200 layout
+space. The rest followed Woof rather than being invented -- checkouts of
 `woof`, `crispy-doom` and `dsda-doom` sit beside this one in `C:/Source`.
 
 Woof's model, from `src/i_video.c`:
@@ -446,18 +449,30 @@ Woof's model, from `src/i_video.c`:
 - `video.unscaledw = unscaled_actualheight * aspect_ratio` -- the width is
   *derived from the aspect ratio*, keeping the vertical base fixed. Widescreen
   shows more at the sides rather than squashing; the 200-unit height never
-  moves.
+  moves. Ours: `SCREENWIDTH` in `I_CreateWindowAndRenderer`
+  (`linux/i_video.c`), from `SDL_GetRenderOutputSize`.
 - `video.deltaw = (video.unscaledw - NONWIDEWIDTH) / 2` (i_video.c:1238), where
   `NONWIDEWIDTH` is 320 -- our `BASE_WIDTH`. That delta is the whole trick.
+  Ours: `deltawidth` (`doomdef.c`/`.h`).
 - Everything laid out in the 320-wide space subtracts `deltaw` when drawing so
   it stays put while the view widens: the status bar, automap
   (`am_map.c:2532`), finale (`f_finale.c`), crosshair (`hu_crosshair.c:198`),
-  the disk icon. Grepping Woof for `deltaw` enumerates every site that needs
-  the treatment; ours are the same list.
+  the disk icon. Turned out almost none of ours needed it -- the earlier
+  groundwork had already made most HUD/menu/automap/intermission/finale code
+  `SCREENWIDTH`-relative rather than hardcoding 320, so it was already
+  correct once `SCREENWIDTH` started actually varying. The one exception was
+  `hu_leveltime`'s widget position (`hu_stuff.c`), fixed with `deltawidth`.
+- The field-of-view widening itself (`R_InitTextureMapping`, `r_main.c:318-353`
+  in Woof) has no `deltaw` equivalent -- it is a separate formula,
+  `fov' = 2*atan(tan(fov/2) * width_ratio)`, since a wider screen needs a
+  wider FOV to show more of the world rather than the same 90 degrees at
+  higher resolution.
 
-So the order is: derive the width from an aspect-ratio setting, allocate the
-framebuffer and recompute the projection/view tables from it, then walk our
-equivalents of Woof's `deltaw` sites. `BASE_WIDTH` already marks most of them.
+Not done: the windowed (sub-fullscreen) screen sizes deliberately keep their
+exact pre-widescreen positioning rather than widening too -- see the
+Changelog entry for why (a border-drawing edge case at the largest windowed
+size). Automap text overlays, the menu background, and the classic
+text-overlay HUD (screensize 8) were not individually audited for centering.
 
 ---
 

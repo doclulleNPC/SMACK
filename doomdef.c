@@ -4,6 +4,9 @@
 int SCREENWIDTH  = 320;
 int SCREENHEIGHT = 200;
 
+// See doomdef.h: widescreen delta, 0 at the classic aspect ratio.
+int deltawidth = 0;
+
 //-----------------------------------------------------------------------------
 //
 // $Id: doomdef.c,v 1.3 1998/05/03 22:40:02 killough Exp $

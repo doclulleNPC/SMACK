@@ -26,6 +26,10 @@ static const char rcsid[] = "$Id: r_main.c,v 1.13 1998/05/07 00:47:52 killough E
 
 #include <stdint.h>
 #include <limits.h>
+#include <math.h>       // widescreen FOV (R_InitTextureMapping): tan/atan/M_PI
+#ifndef M_PI            // MSVC's <math.h> hides M_PI unless _USE_MATH_DEFINES
+#define M_PI 3.14159265358979323846
+#endif
 
 #include "doomstat.h"
 #include "i_video.h"
@@ -270,7 +274,7 @@ static void R_InitTextureMapping (void)
 {
   register int i,x;
   fixed_t focallength;
-    
+
   // Use tangent table to generate viewangletox:
   //  viewangletox will give the next greatest x
   //  after the view angle.
@@ -278,9 +282,32 @@ static void R_InitTextureMapping (void)
   // Calc focallength
   //  so fov angles covers SCREENWIDTH.
 
-                        // sf: zooming
-  focallength = FixedDiv(centerxfrac*zoom, finetangent[FINEANGLES/4+fov/2]);
-        
+  // Widescreen: only when the view genuinely fills a widened screen --
+  // scaledviewwidth already varies with the windowed "screen size" slider
+  // even at the classic aspect ratio (a smaller window is a crop of the same
+  // 90-degree view, not a narrower one -- that's vanilla behaviour, untouched
+  // here), so the trigger has to be "screen is wide AND view fills it", not
+  // just "centerx isn't the classic 320-wide value".
+  if (SCREENWIDTH != BASE_WIDTH && viewwidth == (SCREENWIDTH << hires))
+    {
+      // Woof src/r_main.c:318-353: a wider view needs more field of view,
+      // not just finer resolution across the same angle -- otherwise the
+      // extra columns just crop in rather than showing more of the world.
+      // fov (fine-angle units, the existing console-adjustable zoom variable)
+      // is scaled by how much wider centerxfrac is than its classic
+      // reference, via the standard perspective relation
+      // fov' = 2*atan(tan(fov/2) * width_ratio).
+      fixed_t centerxfrac_nonwide = ((BASE_WIDTH << hires) / 2) << FRACBITS;
+      double ratio = (double)centerxfrac / (double)centerxfrac_nonwide;
+      double halftan = tan((fov/2) * (2.0*M_PI/FINEANGLES)) * ratio;
+      int wide_fov = (int)(atan(halftan) * (FINEANGLES/M_PI));
+
+                            // sf: zooming
+      focallength = FixedDiv(centerxfrac*zoom, finetangent[FINEANGLES/4+wide_fov/2]);
+    }
+  else                      // sf: zooming
+    focallength = FixedDiv(centerxfrac*zoom, finetangent[FINEANGLES/4+fov/2]);
+
   for (i=0 ; i<FINEANGLES/2 ; i++)
     {
       int t;
@@ -312,7 +339,7 @@ static void R_InitTextureMapping (void)
         ;
       xtoviewangle[x] = (i<<ANGLETOFINESHIFT)-ANG90;
     }
-    
+
   // Take out the fencepost cases from viewangletox.
   for (i=0; i<FINEANGLES/2; i++)
     if (viewangletox[i] == -1)
@@ -411,14 +438,14 @@ void R_ExecuteSetViewSize (void)
   projection = centerxfrac * zoom;      // sf: zooming
 
   R_InitBuffer(scaledviewwidth, scaledviewheight);       // killough 11/98
-        
+
   R_InitTextureMapping();
-    
+
   // psprite scales
                                 // sf: zooming added
   pspritescale = FixedDiv(zoom*viewwidth, SCREENWIDTH);       // killough 11/98
   pspriteiscale = FixedDiv(SCREENWIDTH, zoom*viewwidth);       // killough 11/98
-    
+
   // thing clipping
   for (i=0 ; i<viewwidth ; i++)
   {
@@ -433,13 +460,13 @@ void R_ExecuteSetViewSize (void)
       origyslope[i] = FixedDiv(viewwidth*zoom*(FRACUNIT/2), dy);
     }
    yslope = origyslope + (viewheight/2);
-        
+
   for (i=0 ; i<viewwidth ; i++)
     {
       fixed_t cosadj = abs(finecosine[xtoviewangle[i]>>ANGLETOFINESHIFT]);
       distscale[i] = FixedDiv(FRACUNIT,cosadj);
     }
-    
+
   // Calculate the light levels to use
   //  for each level / scale combination.
   for (i=0; i<LIGHTLEVELS; i++)
@@ -448,7 +475,7 @@ void R_ExecuteSetViewSize (void)
       for (j=0 ; j<MAXLIGHTSCALE ; j++)
         {                                       // killough 11/98:
           int t, level = startmap - j*SCREENWIDTH/scaledviewwidth/DISTMAP;
-            
+
           if (level < 0)
             level = 0;
 
@@ -641,7 +668,7 @@ int flatskip = 0;
 // R_RenderView
 //
 void R_RenderPlayerView (player_t* player, camera_t *camerapoint)
-{       
+{
   R_SetupFrame (player, camerapoint);
 
   // Clear buffers.
@@ -649,7 +676,7 @@ void R_RenderPlayerView (player_t* player, camera_t *camerapoint)
   R_ClearDrawSegs ();
   R_ClearPlanes ();
   R_ClearSprites ();
-    
+
   if (autodetect_hom)
         R_HOMdrawer();
 
@@ -658,15 +685,15 @@ void R_RenderPlayerView (player_t* player, camera_t *camerapoint)
 
   // The head node is the last node output.
   R_RenderBSPNode (numnodes-1);
-    
+
   // Check for new console commands.
   NetUpdate ();
-     
+
   if(!flatskip || render_ticker % flatskip) R_DrawPlanes ();
-    
+
   // Check for new console commands.
   NetUpdate ();
-    
+
   R_DrawMasked ();
 
   // Check for new console commands.

@@ -787,6 +787,13 @@ boolean HU_ChatRespond(event_t *ev)
 
 void HU_WidgetsInit()
 {
+  // Widescreen: hu_leveltime is initialised at BASE_WIDTH-60 (a fixed
+  // right-of-centre position in the classic 320-wide layout space) because a
+  // static initializer can't reference the runtime deltawidth. Shift it out
+  // to the real right edge here, once, now that D_SetGraphicsMode (called
+  // before HU_Init) has set deltawidth for real.
+  hu_leveltime.x += deltawidth;
+
   HU_AddWidget(&hu_centremessage);
   HU_AddWidget(&hu_levelname);
   HU_AddWidget(&hu_leveltime);

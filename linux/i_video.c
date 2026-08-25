@@ -560,8 +560,8 @@ static void I_SetWindowIcon(void)
 static void I_CreateWindowAndRenderer(void)
 {
   // The render framebuffer is SCREENWIDTH<<hires x SCREENHEIGHT<<hires
-  // (640x400 in the default hi-res mode) and is nearest-neighbour stretched to
-  // the window. Window size comes from, in order of precedence:
+  // (640x400 at the classic aspect ratio, hi-res mode) and is nearest-neighbour
+  // stretched to the window. Window size comes from, in order of precedence:
   //
   //   -geom WxH  ->  -2/-3/-4  ->  SMACK_SCALE  ->  saved v_width/v_height
   //                                             ->  1x (a 640x400 window)
@@ -569,12 +569,19 @@ static void I_CreateWindowAndRenderer(void)
   // The saved size sits below the command-line options deliberately: those stay
   // one-shot overrides for a single run rather than silently rewriting the
   // config.
+  //
+  // Widescreen: this first pass sizes the window exactly as before, always
+  // against the classic 640x400 shape -- SMACK_SCALE=2 still means "a
+  // 1280x800 window", not "a 1280x800 window stretched wider still". Once the
+  // window (and therefore its real aspect ratio) exists, a second pass below
+  // widens SCREENWIDTH/deltawidth to match it and only then sizes the actual
+  // render framebuffer, texture and surface.
   int p;
   boolean explicit_size = false;
 
   hires_flag = hires;
-  fb_w = SCREENWIDTH  << hires;
-  fb_h = SCREENHEIGHT << hires;
+  fb_w = BASE_WIDTH  << hires;
+  fb_h = BASE_HEIGHT << hires;
 
   scale = 1;
   const char *env_scale = getenv("SMACK_SCALE");
@@ -639,6 +646,47 @@ static void I_CreateWindowAndRenderer(void)
   }
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 
+  // Widescreen: derive SCREENWIDTH from the renderer's real output size --
+  // not the pre-creation win_w/win_h above, which for a fullscreen window
+  // (SDL picks the display's own resolution) can differ from what was
+  // requested. This is the Woof model (docs/LEGACY_FIXES.md): the width is
+  // derived from the aspect ratio, BASE_HEIGHT never moves, so widescreen
+  // shows more at the sides rather than squashing anything.
+  {
+    int out_w, out_h;
+    double aspect;
+
+    if (!SDL_GetRenderOutputSize(renderer, &out_w, &out_h) || out_h <= 0)
+      out_w = win_w, out_h = win_h > 0 ? win_h : 1;
+
+    aspect = (double)out_w / (double)out_h;
+
+    // Never narrower than the classic aspect ratio: a tall/narrow window
+    // stays letterboxed by the existing stretch-to-window blit rather than
+    // cropping the classic 320-wide view.
+    if (aspect < (double)BASE_WIDTH / BASE_HEIGHT)
+      aspect = (double)BASE_WIDTH / BASE_HEIGHT;
+
+    SCREENWIDTH = (int)(BASE_HEIGHT * aspect + 0.5);
+
+    // MAX_SCREENWIDTH bounds the renderer's fixed-size column/opening arrays
+    // in real pixels, i.e. SCREENWIDTH<<hires -- see doomdef.h.
+    if (SCREENWIDTH > (MAX_SCREENWIDTH >> hires))
+      SCREENWIDTH = MAX_SCREENWIDTH >> hires;
+
+    deltawidth = (SCREENWIDTH - BASE_WIDTH) / 2;
+  }
+
+  fb_w = SCREENWIDTH  << hires;
+  fb_h = SCREENHEIGHT << hires;
+
+  // The startup V_Init() call (d_main.c) runs before this function does --
+  // before SCREENWIDTH's real (possibly widened) value is known -- so
+  // screens[] was sized for the classic width. Reallocate it correctly now,
+  // and again every time this function re-runs (I_ResetScreen), since
+  // SCREENWIDTH can change again on the next fullscreen toggle / window move.
+  V_Init();
+
   if (texture)
   {
     SDL_DestroyTexture(texture);
@@ -674,6 +722,13 @@ void I_ResetScreen(void)
 
   I_ShutdownGraphics();
   I_CreateWindowAndRenderer();
+
+  // Widescreen: SCREENWIDTH may just have changed (I_CreateWindowAndRenderer
+  // re-derives it from the real window/display aspect ratio every call).
+  // Defer the renderer's view-size-dependent tables (R_ExecuteSetViewSize,
+  // R_InitTextureMapping) to the next frame rather than recomputing them here
+  // directly, matching how a screen-size menu change already works.
+  setsizeneeded = true;
 
   in_graphics_mode = true;
   in_textmode = false;

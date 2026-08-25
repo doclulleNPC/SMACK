@@ -444,19 +444,30 @@ void V_ClassicFPSDrawer()
 
 void V_Init(void)
 {
-  // lowres removed: always allocate hi-res (640x400) screen buffers
+  // lowres removed: always allocate hi-res screen buffers. size is in bytes
+  // for a SCREENWIDTH<<hires x SCREENHEIGHT<<hires buffer: the *4 stands in
+  // for (1<<hires)*(1<<hires) since hires is always exactly 1.
+  //
+  // Widescreen (linux/i_video.c): SCREENWIDTH can grow between calls -- once
+  // at startup at the classic width, again once the real window/display
+  // aspect ratio is known -- so this always reallocates rather than assuming
+  // a fixed size, and frees the previous buffers first so repeated calls
+  // (toggling fullscreen, etc.) don't leak one screens[] set per call.
   int size = SCREENWIDTH*SCREENHEIGHT*4;
   static byte *s;
 
 #ifdef DJGPP
   if (s)
     free(s), destroy_bitmap(screens0_bitmap);
+#else
+  free(s);
+  free(screens[0]);
 #endif
 
   screens[3] = (screens[2] = (screens[1] = s = calloc(size,3)) + size) + size;
 
 #ifdef DJGPP
-  screens0_bitmap = 
+  screens0_bitmap =
     create_bitmap_ex(8, SCREENWIDTH << hires, SCREENHEIGHT << hires);
   memset(screens[0] = screens0_bitmap->line[0], 0, size);
 #else

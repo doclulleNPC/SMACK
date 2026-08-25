@@ -68,12 +68,6 @@ typedef enum {
   unknown
 } Language_t;
 
-//
-// For resize of screen, at start of game.
-//
-
-#define BASE_WIDTH 800
-
 // It is educational but futile to change this
 //  scaling e.g. to 2. Drawing of status bar,
 //  menues etc. is tied to the scale implied
@@ -86,14 +80,17 @@ typedef enum {
 // allows us to avoid the overhead of dynamic allocation
 // when multiple screen sizes are supported
 
-#define MAX_SCREENWIDTH  640
+// Widescreen (see linux/i_video.c, r_main.c): SCREENWIDTH can now exceed
+// BASE_WIDTH, so this ceiling has to cover it. 1024 comfortably covers a
+// genuine 21:9/32:9 monitor (>>hires clamped in I_CreateWindowAndRenderer).
+// SCREENHEIGHT never varies from BASE_HEIGHT<<hires -- this pass is width-only.
+#define MAX_SCREENWIDTH  1024
 #define MAX_SCREENHEIGHT 400
 
-// Runtime, not compile-time. Still 320x200 base (doubled by `hires`) -- this
-// change is deliberately behaviour-neutral. It exists because every step toward
-// arbitrary resolutions and widescreen needs these to be variables first, and
-// doing that conversion on its own keeps it reviewable: nothing here changes
-// what the game draws, only where the numbers come from.
+// Runtime, not compile-time. SCREENHEIGHT is always BASE_HEIGHT<<hires; the
+// renderer's own dimension is SCREENWIDTH, which linux/i_video.c widens past
+// BASE_WIDTH to match the real window/display aspect ratio -- see
+// I_CreateWindowAndRenderer and R_InitTextureMapping's widescreen FOV branch.
 //
 // The renderer's fixed arrays stay sized to MAX_SCREENWIDTH/MAX_SCREENHEIGHT,
 // which is what bounds them; these two say how much of that is in use.
@@ -106,6 +103,13 @@ extern int SCREENHEIGHT;
 // like), and SCREENWIDTH/SCREENHEIGHT where the live resolution is meant.
 #define BASE_WIDTH       320
 #define BASE_HEIGHT      200
+
+// Widescreen: (SCREENWIDTH - BASE_WIDTH) / 2, in the same 320-wide layout
+// space as BASE_WIDTH -- i.e. how far a HUD/menu/automap element drawn at a
+// literal BASE_WIDTH-relative x needs to shift to stay put (or centered,
+// or right-anchored) as the live view widens. 0 at the classic aspect ratio.
+// Set alongside SCREENWIDTH in linux/i_video.c's I_CreateWindowAndRenderer.
+extern int deltawidth;
 
 // The maximum number of players, multiplayer/networking.
 #define MAXPLAYERS       4
