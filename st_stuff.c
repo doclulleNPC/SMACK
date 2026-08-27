@@ -54,11 +54,20 @@ rcsid[] = "$Id: st_stuff.c,v 1.46 1998/05/06 16:05:40 jim Exp $";
 // Radiation suit, green shift.
 #define RADIATIONPAL            13
 
-// Location of status bar
-#define ST_X                    0
-#define ST_X2                   104
-
-#define ST_FX                   143
+// Location of status bar.
+//
+// Widescreen: every horizontal coordinate carries + deltawidth, so the bar
+// stays centred while the 3D view widens around it -- at screensize 7 the
+// view now fills the whole screen and the bar is drawn over it, so the game
+// is visible to the left and right of the bar. deltawidth is 0 at the
+// classic aspect ratio, leaving all of these at their vanilla values.
+// This is aidoom's WIDESCREENDELTA approach (files/st_stuff.c:87).
+// These are macros, not constants, so they follow a live aspect change;
+// the widget structs capture them in ST_createWidgets, which I_ApplyAspect
+// re-runs via ST_Start.
+#define ST_X                    (0 + deltawidth)
+#define ST_X2                   (104 + deltawidth)
+#define ST_FX                   (143 + deltawidth)
 #define ST_FY                   169
 
 // Should be set to patch width
@@ -72,7 +81,7 @@ rcsid[] = "$Id: st_stuff.c,v 1.46 1998/05/06 16:05:40 jim Exp $";
 #define ST_GODFACE              (ST_NUMPAINFACES*ST_FACESTRIDE)
 #define ST_DEADFACE             (ST_GODFACE+1)
 
-#define ST_FACESX               143
+#define ST_FACESX               (143 + deltawidth)
 #define ST_FACESY               168
 
 #define ST_EVILGRINCOUNT        (2*TICRATE)
@@ -94,73 +103,73 @@ rcsid[] = "$Id: st_stuff.c,v 1.46 1998/05/06 16:05:40 jim Exp $";
 
 // AMMO number pos.
 #define ST_AMMOWIDTH            3
-#define ST_AMMOX                44
+#define ST_AMMOX                (44 + deltawidth)
 #define ST_AMMOY                171
 
 // HEALTH number pos.
 #define ST_HEALTHWIDTH          3
-#define ST_HEALTHX              90
+#define ST_HEALTHX              (90 + deltawidth)
 #define ST_HEALTHY              171
 
 // Weapon pos.
-#define ST_ARMSX                111
+#define ST_ARMSX                (111 + deltawidth)
 #define ST_ARMSY                172
-#define ST_ARMSBGX              104
+#define ST_ARMSBGX              (104 + deltawidth)
 #define ST_ARMSBGY              168
 #define ST_ARMSXSPACE           12
 #define ST_ARMSYSPACE           10
 
 // Frags pos.
-#define ST_FRAGSX               138
+#define ST_FRAGSX               (138 + deltawidth)
 #define ST_FRAGSY               171
 #define ST_FRAGSWIDTH           2
 
 // ARMOR number pos.
 #define ST_ARMORWIDTH           3
-#define ST_ARMORX               221
+#define ST_ARMORX               (221 + deltawidth)
 #define ST_ARMORY               171
 
 // Key icon positions.
 #define ST_KEY0WIDTH            8
 #define ST_KEY0HEIGHT           5
-#define ST_KEY0X                239
+#define ST_KEY0X                (239 + deltawidth)
 #define ST_KEY0Y                171
 #define ST_KEY1WIDTH            ST_KEY0WIDTH
-#define ST_KEY1X                239
+#define ST_KEY1X                (239 + deltawidth)
 #define ST_KEY1Y                181
 #define ST_KEY2WIDTH            ST_KEY0WIDTH
-#define ST_KEY2X                239
+#define ST_KEY2X                (239 + deltawidth)
 #define ST_KEY2Y                191
 
 // Ammunition counter.
 #define ST_AMMO0WIDTH           3
 #define ST_AMMO0HEIGHT          6
-#define ST_AMMO0X               288
+#define ST_AMMO0X               (288 + deltawidth)
 #define ST_AMMO0Y               173
 #define ST_AMMO1WIDTH           ST_AMMO0WIDTH
-#define ST_AMMO1X               288
+#define ST_AMMO1X               (288 + deltawidth)
 #define ST_AMMO1Y               179
 #define ST_AMMO2WIDTH           ST_AMMO0WIDTH
-#define ST_AMMO2X               288
+#define ST_AMMO2X               (288 + deltawidth)
 #define ST_AMMO2Y               191
 #define ST_AMMO3WIDTH           ST_AMMO0WIDTH
-#define ST_AMMO3X               288
+#define ST_AMMO3X               (288 + deltawidth)
 #define ST_AMMO3Y               185
 
 // Indicate maximum ammunition.
 // Only needed because backpack exists.
 #define ST_MAXAMMO0WIDTH        3
 #define ST_MAXAMMO0HEIGHT       5
-#define ST_MAXAMMO0X            314
+#define ST_MAXAMMO0X            (314 + deltawidth)
 #define ST_MAXAMMO0Y            173
 #define ST_MAXAMMO1WIDTH        ST_MAXAMMO0WIDTH
-#define ST_MAXAMMO1X            314
+#define ST_MAXAMMO1X            (314 + deltawidth)
 #define ST_MAXAMMO1Y            179
 #define ST_MAXAMMO2WIDTH        ST_MAXAMMO0WIDTH
-#define ST_MAXAMMO2X            314
+#define ST_MAXAMMO2X            (314 + deltawidth)
 #define ST_MAXAMMO2Y            191
 #define ST_MAXAMMO3WIDTH        ST_MAXAMMO0WIDTH
-#define ST_MAXAMMO3X            314
+#define ST_MAXAMMO3X            (314 + deltawidth)
 #define ST_MAXAMMO3Y            185
 
 // killough 2/8/98: weapon info position macros UNUSED, removed here
@@ -771,6 +780,14 @@ void ST_Drawer(boolean fullscreen, boolean refresh)
 {
   st_statusbaron = !fullscreen || automapactive;
   st_firsttime = st_firsttime || refresh;
+
+  // Widescreen: at screensize 7 the 3D view is now full height, so it repaints
+  // the bar's area every frame and the bar sits on top as an overlay. The
+  // incremental ST_diffDraw path assumes the untouched parts of the bar are
+  // still on screen from last frame, which is no longer true -- only the
+  // widgets that happened to change would survive. Force the full redraw.
+  if (!fullscreen && scaledviewheight == SCREENHEIGHT)
+    st_firsttime = true;
 
   ST_doPaletteStuff();  // Do red-/gold-shifts from damage/items
 

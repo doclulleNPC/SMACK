@@ -14,6 +14,35 @@ SDL3 Linux backend under `linux/`.
 
 ## Unreleased
 
+### Widescreen: centre the status bar, game visible either side
+
+At screensize 7 (the default, `setblocks == 10`) the 3D view now fills the
+screen **entirely** -- full width *and* full height -- with the status bar drawn
+over the bottom of it as a centred overlay, so the level is visible to the left
+and right of the bar instead of the view stopping at its edges. This is what
+aidoom does (`files/r_main.c:717`).
+
+- `R_ExecuteSetViewSize`: `setblocks == 10` takes `scaledviewheight =
+  SCREENHEIGHT` as well as the full width.
+- `st_stuff.c`: every horizontal status-bar coordinate (`ST_X`, `ST_FX`,
+  `ST_AMMOX`, `ST_HEALTHX`, `ST_ARMSX`, `ST_FRAGSX`, `ST_ARMORX`, the key and
+  ammo columns, `ST_FACESX`, …) now carries `+ deltawidth`, aidoom's
+  `WIDESCREENDELTA` approach (`files/st_stuff.c:87`). They stay macros rather
+  than becoming constants so they follow a live aspect change; the widget
+  structs capture them in `ST_createWidgets`, which `I_ApplyAspect` re-runs via
+  `ST_Start`. At the classic aspect `deltawidth` is 0, so every value is its
+  vanilla one and nothing moves.
+- `ST_Drawer` forces a **full** bar redraw whenever the bar is shown over a
+  full-height view. The incremental `ST_diffDraw` path assumes the untouched
+  parts of the bar survive from the previous frame, which stops being true once
+  the 3D view repaints that area every frame -- only the widgets that happened
+  to change would have been drawn.
+- `D_Display` asks the screen-size tier (`screenSize >= 8`) whether the bar is
+  hidden, rather than inferring it from `scaledviewheight == 200`. Those meant
+  the same thing until screensize 7 also became full-height.
+
+Demo playback clean at screensizes 4, 7, 8 and 11 on a 1920x1080 window.
+
 ### Widescreen: fix the view being stuck 4:3 against one edge
 
 **Bug report:** at a widescreen ratio the window just got bigger while the game

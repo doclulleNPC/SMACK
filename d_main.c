@@ -253,7 +253,12 @@ void D_Display (void)
           R_RenderPlayerView (&players[displayplayer], camera);
       }
 
-      ST_Drawer(scaledviewheight == 200, redrawsbar );    // killough 11/98
+      // screenSize >= 8 is the genuinely bar-less tier. This used to read
+      // `scaledviewheight == 200`, which meant the same thing until
+      // screensize 7 also became full-height (see R_ExecuteSetViewSize) --
+      // there the view fills the screen but the bar is still drawn, centred,
+      // over the bottom of it.
+      ST_Drawer(screenSize >= 8, redrawsbar );    // killough 11/98
       HU_Drawer ();
       break;
     case GS_INTERMISSION:

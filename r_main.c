@@ -443,9 +443,14 @@ void R_ExecuteSetViewSize (void)
     }
   else if (setblocks == 10)
     {
+      // Widescreen: full width AND full height, with the status bar drawn
+      // over the bottom of it as a centred overlay -- so the 3D view shows
+      // to the left and right of the bar rather than being cut off at its
+      // width. aidoom does exactly this (files/r_main.c:717). At the classic
+      // aspect ratio there is no margin either side, so it looks unchanged.
       scaledviewwidth_nonwide = BASE_WIDTH;
       scaledviewwidth = SCREENWIDTH;
-      scaledviewheight = (setblocks*168/10) & ~7;        // killough 11/98
+      scaledviewheight = SCREENHEIGHT;
     }
   else
     {
