@@ -106,7 +106,8 @@ If nothing is found, SMACK exits with "IWAD not found".
 
 ## Display
 
-Rendering is always hi-res 640×400. The window is magnified on top of that; in
+Rendering is hi-res, 200 rows tall; the width follows the aspect ratio you pick
+(640×400 at the classic ratio). The window is magnified on top of that; in
 order of precedence:
 
 | | |
@@ -123,6 +124,25 @@ size for that run only, without overwriting it.
 **Fullscreen**: Options → video → "fullscreen" (cvar `v_fullscreen`), or
 **Alt+Enter** at any time. It persists, and the windowed size is kept separately,
 so leaving fullscreen returns you to the window you had.
+
+**Aspect ratio / widescreen**: Options → video → "aspect ratio" (cvar
+`v_aspect`). Widescreen shows *more of the level at the sides* rather than
+stretching the classic view — the 200-row height never changes.
+
+| value | result |
+|---|---|
+| `classic 320x200` | exactly as pre-widescreen; pillarboxed in a wide window |
+| `auto (match window)` | follows the window/display shape — the default |
+| `16:9` / `21:9` / `32:9` | fixed ratio regardless of the window |
+
+It applies immediately (no restart), and `auto` also tracks the window as you
+drag-resize it and when you toggle fullscreen. A window *narrower* than the
+classic ratio is letterboxed rather than cropped.
+
+There is no 16:10 entry because SMACK's native 320×200 grid already **is** 16:10
+— it renders without the 1.2× vertical aspect correction most other ports apply,
+so a 16:10 mode would be identical to `classic`. For the same reason these
+ratios mean "fill a window of this shape", not "this shape with square pixels".
 
 **Screen size / HUD** is the "screen size" slider in the menu (cvar
 `screensize`, 0–11):

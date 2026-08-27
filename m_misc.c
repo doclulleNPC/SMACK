@@ -57,7 +57,7 @@ rcsid[] = "$Id: m_misc.c,v 1.60 1998/06/03 20:32:12 jim Exp $";
 static int config_help;         //jff 3/3/98
 int usemouse;
 int usejoystick;
-extern int v_width, v_height, v_fullscreen;   // linux/i_video.c
+extern int v_width, v_height, v_fullscreen, v_aspect;   // linux/i_video.c
 extern int hitindicator;                      // hu_stuff.c
 extern int uncapped;                          // r_interp.c
 extern int endgame_style;                     // mn_menus.c
@@ -315,6 +315,14 @@ default_t defaults[] = {
     &v_fullscreen, NULL,
     0, {0,1}, dt_number, ss_none, wad_no,
     "1 to start fullscreen (alt+enter toggles in game)"
+  },
+
+  {
+    "v_aspect",
+    &v_aspect, NULL,
+    1, {0,4}, dt_number, ss_none, wad_no,
+    "widescreen: 0 classic 320x200, 1 auto (match window), 2 16:9, "
+    "3 21:9, 4 32:9"
   },
 
   {

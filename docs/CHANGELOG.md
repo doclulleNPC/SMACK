@@ -14,6 +14,50 @@ SDL3 Linux backend under `linux/`.
 
 ## Unreleased
 
+### Widescreen: aspect ratio option
+
+The widescreen work in the entry below shipped with **no user-facing option**
+and re-derived its width only at startup. Both gaps are now closed.
+
+- New cvar **`v_aspect`** (`linux/i_video.c`), exposed as **Options -> video ->
+  "aspect ratio"** and persisted in `smack.cfg`: `classic 320x200`,
+  `auto (match window)` (the default), `16:9`, `21:9`, `32:9`. Modelled on
+  Woof's `aspect_ratio_mode_t` (`src/i_video.c:100`).
+- Deliberately **no 16:10 entry**, unlike Woof: SMACK renders a 320x200 grid
+  and stretches it to the window without the 1.2x vertical aspect correction
+  other ports apply, so its native grid *is* 16:10 and such a mode would be a
+  silent duplicate of `classic`. (Woof has both because its `RATIO_ORIG` is
+  aspect-corrected 4:3.) By the same token these ratios mean "fill a window of
+  this shape", not "this shape with square pixels" -- the missing aspect
+  correction is long-standing SMACK behaviour, not something widescreen
+  introduced, and is still unaddressed.
+- `MAX_SCREENWIDTH` raised 1024 -> 1536. At 1024 the 32:9 mode was silently
+  clamped to 512 base columns (~2.56:1) instead of its true 711; 1536 covers
+  `BASE_HEIGHT*32/9 = 711` columns = 1422 real pixels at hires.
+- The derivation is refactored out of `I_CreateWindowAndRenderer` into
+  `I_DeriveWidescreen` (computes `SCREENWIDTH`/`deltawidth`, returns whether
+  it changed) and `I_CreateFramebuffer` (resizes `screens[]`, the ARGB surface
+  and the texture). `I_ApplyAspect` combines them and sets `setsizeneeded`, so
+  the renderer rebuilds its view-size tables on the next frame. Unlike
+  `I_ResetScreen` this keeps the window alive, so it is cheap enough to run
+  from a resize event.
+- **`I_ApplyAspect` is now called from the three paths that previously did
+  nothing**: the `v_aspect` cvar handler (so the menu applies live), the
+  `SDL_EVENT_WINDOW_RESIZED` handler (so `auto` follows a dragged window), and
+  `I_SetFullscreen` (which calls `SDL_SetWindowFullscreen` directly and never
+  routed through `I_ResetScreen`). The changelog entry below originally
+  claimed the fullscreen toggle already re-derived everything -- that was
+  wrong, and is corrected there.
+
+Verified: all five modes produce the expected distinct widths at a 1920x1080
+window (320 / 356 / 356 / 467 / 711), each through a full demo playback with no
+crash; and -- the risky path, since it reallocates `screens[]` mid-game while
+`ylookup[]` points into it -- a **live window resize** on a real window drove
+320 -> 493 -> 320 (widen, then shrink back past the classic clamp) with the
+game still rendering at full rate throughout and no crash.
+
+Still not verified visually: whether the widened view actually *looks* right.
+
 ### Widescreen
 
 The render framebuffer now widens to match the real window/display aspect
@@ -30,8 +74,12 @@ to whatever window size the player picked. `deltawidth` (new global,
   framebuffer room. `V_Init()` (now idempotent -- frees its previous buffers
   before reallocating) runs again here to resize `screens[]`, since the
   startup call in `d_main.c` runs before the real aspect ratio is known and
-  sizes it at the classic width. `I_ResetScreen` sets `setsizeneeded` so a
-  live graphics-mode reset (e.g. a fullscreen toggle) re-derives everything.
+  sizes it at the classic width.
+  (**Correction**, see the "Widescreen: aspect ratio option" entry above: as
+  originally committed this only ever ran at *startup*. This entry claimed a
+  fullscreen toggle re-derived the width; it did not -- `I_SetFullscreen`
+  never went through `I_ResetScreen`, and the window-resize handler didn't
+  re-derive either. Both are fixed in the later entry.)
 - `R_InitTextureMapping` (`r_main.c`) widens the field of view to match, the
   Woof way (`src/r_main.c:318-353`): when the view genuinely fills a widened
   screen, `fov' = 2*atan(tan(fov/2) * width_ratio)`, where `width_ratio` is

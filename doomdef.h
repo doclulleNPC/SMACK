@@ -81,10 +81,12 @@ typedef enum {
 // when multiple screen sizes are supported
 
 // Widescreen (see linux/i_video.c, r_main.c): SCREENWIDTH can now exceed
-// BASE_WIDTH, so this ceiling has to cover it. 1024 comfortably covers a
-// genuine 21:9/32:9 monitor (>>hires clamped in I_CreateWindowAndRenderer).
-// SCREENHEIGHT never varies from BASE_HEIGHT<<hires -- this pass is width-only.
-#define MAX_SCREENWIDTH  1024
+// BASE_WIDTH, so this ceiling has to cover it. The widest mode v_aspect
+// offers is 32:9, i.e. BASE_HEIGHT*32/9 = 711 base columns = 1422 real
+// pixels at hires; 1536 covers that with room to spare. Anything wider is
+// clamped in I_DeriveWidescreen. SCREENHEIGHT never varies from
+// BASE_HEIGHT<<hires -- this pass is width-only.
+#define MAX_SCREENWIDTH  1536
 #define MAX_SCREENHEIGHT 400
 
 // Runtime, not compile-time. SCREENHEIGHT is always BASE_HEIGHT<<hires; the

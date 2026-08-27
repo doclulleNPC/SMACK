@@ -91,6 +91,9 @@ static int           fb_h;
 static SDL_PixelFormat    pixel_fmt;
 static const SDL_PixelFormatDetails *pixel_details = NULL;
 
+// Widescreen: defined below, but used earlier by the window-resize handler.
+void I_ApplyAspect(void);
+
 // ---- input ----------------------------------------------------------------
 
 extern int usemouse;
@@ -420,6 +423,10 @@ void I_GetEvent(void)
           v_width  = win_w;
           v_height = win_h;
         }
+        // Widescreen: the window's aspect ratio just changed, so in AUTO mode
+        // the derived width has to follow it. Without this the framebuffer
+        // keeps whatever shape it had at startup and is merely stretched.
+        I_ApplyAspect();
         break;
 
       default:
@@ -557,6 +564,140 @@ static void I_SetWindowIcon(void)
     }
 }
 
+// Widescreen aspect-ratio mode (cvar v_aspect; menu: Options -> video).
+// Mirrors Woof's aspect_ratio_mode_t (src/i_video.c:100), minus its
+// aspect-correction axis, which SMACK has never had -- see the note in
+// I_DeriveWidescreen.
+// No 16:10 entry: SMACK renders a 320x200 grid and stretches it to the
+// window without the 1.2x vertical aspect correction other ports apply, so
+// its native grid IS 16:10 -- a "16:10" mode would be a silent duplicate of
+// ASPECT_CLASSIC. (Woof has both because its ORIG is aspect-corrected 4:3.)
+enum
+{
+  ASPECT_CLASSIC,      // 320x200 (= 16:10 here), as before widescreen existed
+  ASPECT_AUTO,         // match the window/display -- the default
+  ASPECT_16_9,
+  ASPECT_21_9,
+  ASPECT_32_9,
+  NUM_ASPECTS
+};
+
+int v_aspect = ASPECT_AUTO;
+
+// Widescreen: set SCREENWIDTH/deltawidth from v_aspect and, in AUTO, the
+// renderer's real output size -- not win_w/win_h, which for a fullscreen
+// window (SDL picks the display's own resolution) can differ from what was
+// requested. This is the Woof model (docs/LEGACY_FIXES.md): the width is
+// derived from the aspect ratio, BASE_HEIGHT never moves, so widescreen shows
+// more at the sides rather than squashing anything.
+//
+// Note the ratios are of SMACK's 320x200 pixel grid, which it stretches to
+// fill the window without the 1.2x vertical aspect correction that Woof and
+// friends apply. That is pre-existing SMACK behaviour, not something
+// widescreen introduces, but it does mean e.g. "16:9" here means "fill a 16:9
+// window", not "16:9 with square pixels".
+//
+// Returns true if SCREENWIDTH changed.
+static boolean I_DeriveWidescreen(void)
+{
+  const double classic = (double)BASE_WIDTH / BASE_HEIGHT;
+  int oldwidth = SCREENWIDTH;
+  double aspect;
+
+  switch (v_aspect)
+  {
+    case ASPECT_16_9:  aspect = 16.0 /  9.0; break;
+    case ASPECT_21_9:  aspect = 21.0 /  9.0; break;
+    case ASPECT_32_9:  aspect = 32.0 /  9.0; break;
+    case ASPECT_CLASSIC:
+      aspect = classic;
+      break;
+    default:                                  // ASPECT_AUTO
+    {
+      int out_w, out_h;
+
+      if (!renderer || !SDL_GetRenderOutputSize(renderer, &out_w, &out_h)
+          || out_h <= 0)
+        out_w = win_w, out_h = win_h > 0 ? win_h : 1;
+
+      aspect = (double)out_w / (double)out_h;
+      break;
+    }
+  }
+
+  // Never narrower than the classic aspect ratio: a tall/narrow window stays
+  // letterboxed by the existing stretch-to-window blit rather than cropping
+  // the classic 320-wide view.
+  if (aspect < classic)
+    aspect = classic;
+
+  SCREENWIDTH = (int)(BASE_HEIGHT * aspect + 0.5);
+
+  // MAX_SCREENWIDTH bounds the renderer's fixed-size column/opening arrays in
+  // real pixels, i.e. SCREENWIDTH<<hires -- see doomdef.h.
+  if (SCREENWIDTH > (MAX_SCREENWIDTH >> hires))
+    SCREENWIDTH = MAX_SCREENWIDTH >> hires;
+
+  deltawidth = (SCREENWIDTH - BASE_WIDTH) / 2;
+
+  return SCREENWIDTH != oldwidth;
+}
+
+// (Re)allocate everything sized from SCREENWIDTH: the engine's screens[], the
+// ARGB staging surface and the streaming texture.
+static void I_CreateFramebuffer(void)
+{
+  fb_w = SCREENWIDTH  << hires;
+  fb_h = SCREENHEIGHT << hires;
+
+  // The startup V_Init() call (d_main.c) runs before the real (possibly
+  // widened) SCREENWIDTH is known, so screens[] was sized for the classic
+  // width. V_Init is idempotent -- it frees its previous buffers -- so
+  // calling it again here resizes rather than leaks.
+  V_Init();
+
+  if (texture)
+  {
+    SDL_DestroyTexture(texture);
+    texture = NULL;
+  }
+  texture = SDL_CreateTexture(renderer,
+                              pixel_fmt,
+                              SDL_TEXTUREACCESS_STREAMING,
+                              fb_w, fb_h);
+  if (!texture) I_Error("SDL_CreateTexture failed: %s", SDL_GetError());
+  // nearest-neighbour so the pixel art stays crisp when scaled up
+  SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+
+  if (rgba_surface)
+  {
+    SDL_DestroySurface(rgba_surface);
+    rgba_surface = NULL;
+  }
+  rgba_surface = SDL_CreateSurface(fb_w, fb_h, pixel_fmt);
+  if (!rgba_surface) I_Error("SDL_CreateSurface failed: %s", SDL_GetError());
+  pixel_buffer = (Uint32 *)rgba_surface->pixels;
+  pitch_pixels = rgba_surface->pitch / 4;
+}
+
+// Re-derive the widescreen width against the live window and, if it actually
+// changed, resize the framebuffer and ask the renderer to rebuild its
+// view-size-dependent tables next frame. Cheap enough to call on every window
+// resize; unlike I_ResetScreen this keeps the window itself alive.
+void I_ApplyAspect(void)
+{
+  if (!in_graphics_mode || !renderer)
+    return;
+
+  if (!I_DeriveWidescreen())
+    return;                     // nothing to do
+
+  I_CreateFramebuffer();
+  setsizeneeded = true;         // R_ExecuteSetViewSize on the next frame
+  if (automapactive) AM_Start();
+  ST_Start();
+}
+
 static void I_CreateWindowAndRenderer(void)
 {
   // The render framebuffer is SCREENWIDTH<<hires x SCREENHEIGHT<<hires
@@ -646,69 +787,8 @@ static void I_CreateWindowAndRenderer(void)
   }
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 
-  // Widescreen: derive SCREENWIDTH from the renderer's real output size --
-  // not the pre-creation win_w/win_h above, which for a fullscreen window
-  // (SDL picks the display's own resolution) can differ from what was
-  // requested. This is the Woof model (docs/LEGACY_FIXES.md): the width is
-  // derived from the aspect ratio, BASE_HEIGHT never moves, so widescreen
-  // shows more at the sides rather than squashing anything.
-  {
-    int out_w, out_h;
-    double aspect;
-
-    if (!SDL_GetRenderOutputSize(renderer, &out_w, &out_h) || out_h <= 0)
-      out_w = win_w, out_h = win_h > 0 ? win_h : 1;
-
-    aspect = (double)out_w / (double)out_h;
-
-    // Never narrower than the classic aspect ratio: a tall/narrow window
-    // stays letterboxed by the existing stretch-to-window blit rather than
-    // cropping the classic 320-wide view.
-    if (aspect < (double)BASE_WIDTH / BASE_HEIGHT)
-      aspect = (double)BASE_WIDTH / BASE_HEIGHT;
-
-    SCREENWIDTH = (int)(BASE_HEIGHT * aspect + 0.5);
-
-    // MAX_SCREENWIDTH bounds the renderer's fixed-size column/opening arrays
-    // in real pixels, i.e. SCREENWIDTH<<hires -- see doomdef.h.
-    if (SCREENWIDTH > (MAX_SCREENWIDTH >> hires))
-      SCREENWIDTH = MAX_SCREENWIDTH >> hires;
-
-    deltawidth = (SCREENWIDTH - BASE_WIDTH) / 2;
-  }
-
-  fb_w = SCREENWIDTH  << hires;
-  fb_h = SCREENHEIGHT << hires;
-
-  // The startup V_Init() call (d_main.c) runs before this function does --
-  // before SCREENWIDTH's real (possibly widened) value is known -- so
-  // screens[] was sized for the classic width. Reallocate it correctly now,
-  // and again every time this function re-runs (I_ResetScreen), since
-  // SCREENWIDTH can change again on the next fullscreen toggle / window move.
-  V_Init();
-
-  if (texture)
-  {
-    SDL_DestroyTexture(texture);
-    texture = NULL;
-  }
-  texture = SDL_CreateTexture(renderer,
-                              pixel_fmt,
-                              SDL_TEXTUREACCESS_STREAMING,
-                              fb_w, fb_h);
-  if (!texture) I_Error("SDL_CreateTexture failed: %s", SDL_GetError());
-  // nearest-neighbour so the pixel art stays crisp when scaled up
-  SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
-
-  if (rgba_surface)
-  {
-    SDL_DestroySurface(rgba_surface);
-    rgba_surface = NULL;
-  }
-  rgba_surface = SDL_CreateSurface(fb_w, fb_h, pixel_fmt);
-  if (!rgba_surface) I_Error("SDL_CreateSurface failed: %s", SDL_GetError());
-  pixel_buffer = (Uint32 *)rgba_surface->pixels;
-  pitch_pixels = rgba_surface->pitch / 4;
+  I_DeriveWidescreen();
+  I_CreateFramebuffer();
 }
 
 void I_ResetScreen(void)
@@ -828,14 +908,39 @@ void I_SetFullscreen(void)
     win_w = v_width;
     win_h = v_height;
   }
+
+  // Widescreen: going fullscreen usually changes the aspect ratio (SDL takes
+  // the display's own resolution), so AUTO has to re-derive. This path does
+  // NOT go through I_ResetScreen, so without this the width would stay at
+  // whatever the windowed shape produced.
+  I_ApplyAspect();
 }
 
 VARIABLE_INT(v_width,  NULL, 0, 32767, NULL);
 VARIABLE_INT(v_height, NULL, 0, 32767, NULL);
 VARIABLE_BOOLEAN(v_fullscreen, NULL, onoff);
 
+// Must match the ASPECT_* enum above, in order.
+static const char *str_aspect[] =
+{
+  "classic 320x200",
+  "auto (match window)",
+  "16:9",
+  "21:9",
+  "32:9",
+};
+
+VARIABLE_INT(v_aspect, NULL, 0, NUM_ASPECTS-1, str_aspect);
+
 CONSOLE_VARIABLE(v_width,  v_width,  0) {}
 CONSOLE_VARIABLE(v_height, v_height, 0) {}
+
+// Applies immediately -- the handler runs after the variable is set, so this
+// serves both the menu and `v_aspect 3` typed at the console.
+CONSOLE_VARIABLE(v_aspect, v_aspect, 0)
+{
+  I_ApplyAspect();
+}
 
 // The handler runs after the variable has been set, so this both toggles from
 // the menu and reacts to `v_fullscreen 1` typed at the console.
@@ -856,5 +961,6 @@ void I_Video_AddCommands(void)
   C_AddCommand(v_width);
   C_AddCommand(v_height);
   C_AddCommand(v_fullscreen);
+  C_AddCommand(v_aspect);
   C_AddCommand(togglefullscreen);
 }
