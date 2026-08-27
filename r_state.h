@@ -46,6 +46,8 @@ extern lighttable_t *fullcolormap;        // killough 3/20/98
 
 extern int viewwidth;
 extern int scaledviewwidth;
+extern int scaledviewwidth_nonwide;   // widescreen: classic 320-based width
+extern fixed_t centerxfrac_nonwide;  // widescreen: classic half-width
 extern int viewheight;
 extern int scaledviewheight;              // killough 11/98
 

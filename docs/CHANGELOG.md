@@ -14,6 +14,51 @@ SDL3 Linux backend under `linux/`.
 
 ## Unreleased
 
+### Widescreen: fix the view being stuck 4:3 against one edge
+
+**Bug report:** at a widescreen ratio the window just got bigger while the game
+stayed 4:3 on the left, with dead space to its right. Two mistakes of mine:
+
+1. `R_ExecuteSetViewSize` computed `scaledviewwidth = setblocks*32`, hardwired to
+   the 320 grid, so every screen size below fullscreen kept a classic-width 3D
+   view no matter how wide the screen got. **The default screensize (7,
+   `setblocks == 10`) is one of those**, which is why it looked broken out of
+   the box.
+2. The previous entry deliberately referenced `BASE_WIDTH` in `R_InitBuffer` to
+   "preserve windowed positioning". That is what pinned the view to the left
+   edge: the vanilla expression `(SCREENWIDTH-width)>>!hires` *centres* it, and
+   overriding it was simply wrong.
+
+Fixed by following Woof (`src/r_main.c:534`), Crispy
+(`src/doom/r_main.c:810`) and aidoom (`files/r_main.c:705`), which all agree:
+
+- `setblocks == 10`, the largest *windowed* size, now takes the **full** widened
+  width, reducing only the height to leave room for the status bar.
+- Smaller sizes scale their width to the screen's shape
+  (`scaledviewheight * SCREENWIDTH / (BASE_HEIGHT - ST_HEIGHT)`) instead of
+  staying 320-based, rounded **up to a multiple of 8** — the bezel patch width —
+  so `R_FillBackScreen`'s border tiles evenly on both sides. That is Crispy's
+  `widescreen_edge_aligner` trick, and it removes the reason the previous entry
+  gave for skipping the border at widened sizes; both border-skip conditions are
+  back to the honest `scaledviewwidth == SCREENWIDTH`.
+- `R_InitBuffer` centres the view again (vanilla expression restored).
+- New `scaledviewwidth_nonwide` / `centerxfrac_nonwide` hold the classic
+  320-based reference for each tier, mirroring Woof. The widescreen FOV branch
+  now triggers on `centerxfrac != centerxfrac_nonwide` (Woof `src/r_main.c:332`)
+  rather than a fullscreen-only test, so the aspect-scaled windowed sizes get
+  the widened FOV too.
+- **`projection` now uses `centerxfrac_nonwide`**, which the first widescreen
+  commit got wrong. Taking the *wide* half-width scales the whole projection
+  (Vert-, zooming in vertically); the non-wide reference extends the view
+  horizontally instead (Hor+), which is what widescreen should do and what Woof
+  (`src/r_main.c:338`) and aidoom ("Hor+: vertical FOV from the 4:3 ref") both
+  do. Identical to the old expression whenever the screen is not widened.
+
+Verified at a 1920x1080 window: the view width is now 356 (= full `SCREENWIDTH`)
+at the default screensize 7 where it was previously 320 and left-aligned, 356 at
+fullscreen, and 104 / 240 (8-aligned, centred) at the small windowed sizes; demo
+playback clean at windowed, largest-windowed and fullscreen tiers.
+
 ### Widescreen: aspect ratio option
 
 The widescreen work in the entry below shipped with **no user-facing option**

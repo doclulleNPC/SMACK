@@ -45,6 +45,7 @@ static const char rcsid[] = "$Id: r_main.c,v 1.13 1998/05/07 00:47:52 killough E
 #include "r_draw.h"
 #include "m_bbox.h"
 #include "r_sky.h"
+#include "st_stuff.h"   // ST_HEIGHT, for the widescreen view-window shape
 #include "s_sound.h"
 #include "v_video.h"
 #include "w_wad.h"
@@ -62,6 +63,9 @@ int validcount = 1;         // increment every time a check is made
 lighttable_t *fixedcolormap;
 int      centerx, centery;
 fixed_t  centerxfrac, centeryfrac;
+// Widescreen: the classic 320-based half-width this view *would* have had.
+// Equal to centerxfrac when the screen is not widened. See R_ExecuteSetViewSize.
+fixed_t  centerxfrac_nonwide;
 fixed_t  projection;
 fixed_t  viewx, viewy, viewz;
 angle_t  viewangle;
@@ -282,22 +286,20 @@ static void R_InitTextureMapping (void)
   // Calc focallength
   //  so fov angles covers SCREENWIDTH.
 
-  // Widescreen: only when the view genuinely fills a widened screen --
-  // scaledviewwidth already varies with the windowed "screen size" slider
-  // even at the classic aspect ratio (a smaller window is a crop of the same
-  // 90-degree view, not a narrower one -- that's vanilla behaviour, untouched
-  // here), so the trigger has to be "screen is wide AND view fills it", not
-  // just "centerx isn't the classic 320-wide value".
-  if (SCREENWIDTH != BASE_WIDTH && viewwidth == (SCREENWIDTH << hires))
+  // Widescreen: engage whenever this view is wider than the classic 320-based
+  // width it would otherwise have had -- exactly Woof's test
+  // (src/r_main.c:332, `centerxfrac == centerxfrac_nonwide`). Both values come
+  // from R_ExecuteSetViewSize, which keeps scaledviewwidth_nonwide as the
+  // "what this would have been" reference for every screen-size tier, so this
+  // is correct for the aspect-scaled windowed sizes too, not just fullscreen.
+  if (centerxfrac != centerxfrac_nonwide)
     {
-      // Woof src/r_main.c:318-353: a wider view needs more field of view,
-      // not just finer resolution across the same angle -- otherwise the
-      // extra columns just crop in rather than showing more of the world.
-      // fov (fine-angle units, the existing console-adjustable zoom variable)
-      // is scaled by how much wider centerxfrac is than its classic
-      // reference, via the standard perspective relation
-      // fov' = 2*atan(tan(fov/2) * width_ratio).
-      fixed_t centerxfrac_nonwide = ((BASE_WIDTH << hires) / 2) << FRACBITS;
+      // A wider view needs more field of view, not just finer resolution
+      // across the same angle -- otherwise the extra columns crop in rather
+      // than showing more of the world. fov (fine-angle units, the existing
+      // console-adjustable zoom variable) is scaled by how much wider
+      // centerxfrac is than its classic reference, via the standard
+      // perspective relation fov' = 2*atan(tan(fov/2) * width_ratio).
       double ratio = (double)centerxfrac / (double)centerxfrac_nonwide;
       double halftan = tan((fov/2) * (2.0*M_PI/FINEANGLES)) * ratio;
       int wide_fov = (int)(atan(halftan) * (FINEANGLES/M_PI));
@@ -417,15 +419,55 @@ void R_ExecuteSetViewSize (void)
 
   setsizeneeded = false;
 
+  // Widescreen: the view width can no longer just be setblocks*32, which is
+  // tied to the 320-wide grid -- that left the 3D view stuck at classic width,
+  // jammed against one side of a widened screen. Woof (src/r_main.c:534),
+  // Crispy (src/doom/r_main.c:810) and aidoom (files/r_main.c:705) all solve
+  // it the same way, and this follows them:
+  //
+  //   setblocks >= 11  fullscreen, full width (as before)
+  //   setblocks == 10  the largest *windowed* size: also FULL width, with
+  //                    only the height reduced to leave room for the status
+  //                    bar. This is the default screen size, so getting it
+  //                    wrong is what made widescreen look broken.
+  //   setblocks < 10   scale the width so the view window keeps the same
+  //                    shape as the screen, rather than staying 320-based.
+  //
+  // scaledviewwidth_nonwide keeps the classic 320-based width throughout; the
+  // FOV maths below needs it as the "what this would have been" reference.
   if (setblocks >= 11)     // 11+ (screenSize 8..10) are all fullscreen
     {
+      scaledviewwidth_nonwide = BASE_WIDTH;
       scaledviewwidth = SCREENWIDTH;
       scaledviewheight = SCREENHEIGHT;                    // killough 11/98
     }
+  else if (setblocks == 10)
+    {
+      scaledviewwidth_nonwide = BASE_WIDTH;
+      scaledviewwidth = SCREENWIDTH;
+      scaledviewheight = (setblocks*168/10) & ~7;        // killough 11/98
+    }
   else
     {
-      scaledviewwidth = setblocks*32;
+      scaledviewwidth_nonwide = setblocks*32;
       scaledviewheight = (setblocks*168/10) & ~7;        // killough 11/98
+
+      if (SCREENWIDTH > BASE_WIDTH)
+        {
+          // Same shape as the screen. Rounded UP to a multiple of 8, the
+          // bezel patch width, so R_FillBackScreen's border tiles evenly on
+          // both sides -- Crispy's widescreen_edge_aligner trick
+          // (src/doom/r_main.c:832), and what makes the border safe to draw
+          // at a widened size at all.
+          const int align = 8 - 1;
+
+          scaledviewwidth = scaledviewheight * SCREENWIDTH / (BASE_HEIGHT - ST_HEIGHT);
+          scaledviewwidth = (scaledviewwidth + align) & ~align;
+          if (scaledviewwidth > SCREENWIDTH)
+            scaledviewwidth = SCREENWIDTH;
+        }
+      else
+        scaledviewwidth = scaledviewwidth_nonwide;
     }
 
   viewwidth = scaledviewwidth << hires;                  // killough 11/98
@@ -435,7 +477,15 @@ void R_ExecuteSetViewSize (void)
   centery = viewheight/2;
   centerxfrac = centerx<<FRACBITS;
   centeryfrac = centery<<FRACBITS;
-  projection = centerxfrac * zoom;      // sf: zooming
+  centerxfrac_nonwide = ((scaledviewwidth_nonwide << hires)/2)<<FRACBITS;
+
+  // Widescreen: projection takes the NON-wide half-width, so widening the
+  // screen extends the view horizontally (Hor+) instead of scaling the whole
+  // projection and zooming in vertically (Vert-). Woof does the same
+  // (src/r_main.c:338), as does aidoom ("Hor+: vertical FOV from the 4:3
+  // ref", files/r_main.c:737). Identical to the old `centerxfrac * zoom`
+  // whenever the screen is not widened, since the two centerxfracs coincide.
+  projection = centerxfrac_nonwide * zoom;      // sf: zooming
 
   R_InitBuffer(scaledviewwidth, scaledviewheight);       // killough 11/98
 
