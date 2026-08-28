@@ -105,7 +105,11 @@ CONSOLE_COMMAND(mn_newgame, 0)
 	    MN_StartMenu(&menu_startmap);
 	  else
             {        // use start map 
-	      G_DeferedInitNew(defaultskill, "START");
+	      // defaultskill is 1-based (see g_game.c), skill_t is 0-based --
+	      // G_ReloadDefaults does the same -1. Without it the start map ran
+	      // one skill harder than chosen (and "nightmare" landed out of
+	      // range, saved only by G_InitNew clamping).
+	      G_DeferedInitNew(defaultskill - 1, "START");
 	      MN_ClearMenus ();
             }
         }

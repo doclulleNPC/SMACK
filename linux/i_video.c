@@ -598,31 +598,76 @@ int v_aspect = ASPECT_AUTO;
 // window", not "16:9 with square pixels".
 //
 // Returns true if SCREENWIDTH changed.
+// The ratio a fixed v_aspect mode asks for, or 0 for ASPECT_AUTO (which takes
+// its shape from the window instead).
+static double I_FixedAspect(void)
+{
+  switch (v_aspect)
+  {
+    case ASPECT_CLASSIC: return (double)BASE_WIDTH / BASE_HEIGHT;
+    case ASPECT_16_9:    return 16.0 /  9.0;
+    case ASPECT_21_9:    return 21.0 /  9.0;
+    case ASPECT_32_9:    return 32.0 /  9.0;
+    default:             return 0.0;          // ASPECT_AUTO
+  }
+}
+
+// Reshape the window to match a fixed aspect ratio. Without this, picking
+// e.g. 21:9 widened the framebuffer but left the window its old shape, so the
+// image was simply stretched to fit and looked wrong -- the setting appeared
+// to "do nothing but change the stretch". ASPECT_AUTO is deliberately exempt:
+// there the window is the input, so resizing it here would be circular.
+// Fullscreen is exempt too -- the display's own shape is fixed.
+static void I_ReshapeWindowForAspect(void)
+{
+  double aspect = I_FixedAspect();
+  int w, h;
+
+  if (!window || v_fullscreen || aspect <= 0.0)
+    return;
+
+  SDL_GetWindowSize(window, &w, &h);
+  if (h <= 0)
+    return;
+
+  w = (int)(h * aspect + 0.5);
+
+  // Keep it on the display: if the derived width does not fit, back off the
+  // height instead so the shape is still right, just smaller.
+  {
+    SDL_Rect usable;
+    SDL_DisplayID disp = SDL_GetDisplayForWindow(window);
+
+    if (disp && SDL_GetDisplayUsableBounds(disp, &usable) && usable.w > 0
+        && w > usable.w)
+      {
+        w = usable.w;
+        h = (int)(w / aspect + 0.5);
+      }
+  }
+
+  SDL_SetWindowSize(window, w, h);
+  win_w = w;
+  win_h = h;
+  v_width = w;          // this one IS a deliberate change of the saved size:
+  v_height = h;         // the player picked this shape
+}
+
 static boolean I_DeriveWidescreen(void)
 {
   const double classic = (double)BASE_WIDTH / BASE_HEIGHT;
   int oldwidth = SCREENWIDTH;
-  double aspect;
+  double aspect = I_FixedAspect();
 
-  switch (v_aspect)
+  if (aspect <= 0.0)                          // ASPECT_AUTO
   {
-    case ASPECT_16_9:  aspect = 16.0 /  9.0; break;
-    case ASPECT_21_9:  aspect = 21.0 /  9.0; break;
-    case ASPECT_32_9:  aspect = 32.0 /  9.0; break;
-    case ASPECT_CLASSIC:
-      aspect = classic;
-      break;
-    default:                                  // ASPECT_AUTO
-    {
-      int out_w, out_h;
+    int out_w, out_h;
 
-      if (!renderer || !SDL_GetRenderOutputSize(renderer, &out_w, &out_h)
-          || out_h <= 0)
-        out_w = win_w, out_h = win_h > 0 ? win_h : 1;
+    if (!renderer || !SDL_GetRenderOutputSize(renderer, &out_w, &out_h)
+        || out_h <= 0)
+      out_w = win_w, out_h = win_h > 0 ? win_h : 1;
 
-      aspect = (double)out_w / (double)out_h;
-      break;
-    }
+    aspect = (double)out_w / (double)out_h;
   }
 
   // Never narrower than the classic aspect ratio: a tall/narrow window stays
@@ -939,6 +984,7 @@ CONSOLE_VARIABLE(v_height, v_height, 0) {}
 // serves both the menu and `v_aspect 3` typed at the console.
 CONSOLE_VARIABLE(v_aspect, v_aspect, 0)
 {
+  I_ReshapeWindowForAspect();   // a fixed ratio reshapes the window to suit
   I_ApplyAspect();
 }
 

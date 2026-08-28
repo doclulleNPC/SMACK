@@ -2076,15 +2076,19 @@ static char    d_mapname[10];
 
 int G_GetMapForName(char *name)
 {
-  char *oldname;
-  int episode, map;
+  // Uppercase into a local copy rather than in place. This used to walk the
+  // caller's buffer writing toupper() back into it, which segfaults outright
+  // when the caller passes a string literal -- as mn_menus.c does for the
+  // start map, G_DeferedInitNew(defaultskill, "START"), so picking "use the
+  // start map" from the new-game menu crashed the game. A lump name is at
+  // most 8 characters, so a fixed local is enough.
+  char upper[9];
+  int episode, map, i;
 
-  oldname = name;
-  while(*oldname)
-    {
-      *oldname = toupper(*oldname);
-      oldname++;
-    }
+  for (i = 0; i < 8 && name[i]; i++)
+    upper[i] = toupper(name[i]);
+  upper[i] = '\0';
+  name = upper;
 
   if(gamemode == commercial)
     {

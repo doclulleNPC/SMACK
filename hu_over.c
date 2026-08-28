@@ -656,7 +656,12 @@ void HU_OverlayDraw()
 {
   int i;
   
-  if(viewheight != (SCREENHEIGHT<<hires)) return;  // fullscreen only
+  // Only the fullscreen-HUD tier (screensize 8+). This used to test
+  // `viewheight != SCREENHEIGHT<<hires`, which meant the same thing until
+  // widescreen made screensize 7 full-height too (the 3D view now fills the
+  // screen with the classic status bar overlaid) -- at which point this
+  // drew a second HUD on top of that bar.
+  if(screenSize < 8) return;
   if(automapactive) return;
   if(!hud_enabled) return;
 

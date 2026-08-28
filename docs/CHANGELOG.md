@@ -14,6 +14,42 @@ SDL3 Linux backend under `linux/`.
 
 ## Unreleased
 
+### Fix double HUD, start-map crash, and window shape on aspect change
+
+**1. Two HUDs at once.** `HU_OverlayDraw` gated on
+`viewheight != SCREENHEIGHT<<hires`, meaning "fullscreen HUD tier only". That
+was equivalent to the tier test until the previous entry made screensize 7
+full-height as well — at which point the fullscreen overlay was drawn *on top of*
+the classic status bar. Now gated on `screenSize < 8` directly. My regression.
+
+**2. "Use the start map" crashed instantly.** Long-standing bug, not from this
+work: `G_GetMapForName` uppercased its argument **in place**, walking the
+caller's buffer with `*p = toupper(*p)`. `mn_menus.c` calls it (via
+`G_DeferedInitNew`) with the string literal `"START"`, and writing to a string
+literal faults. It now uppercases into a local 9-byte copy — a lump name is at
+most 8 characters.
+
+  Fixed alongside it, same line: `G_DeferedInitNew(defaultskill, "START")`
+  passed `defaultskill` straight in as a `skill_t`. `defaultskill` is 1-based
+  (`g_game.c:239`) and `skill_t` is 0-based — `G_ReloadDefaults` does the `-1`,
+  this call did not, so the start map always ran one skill harder than chosen,
+  with "nightmare" landing out of range and saved only by `G_InitNew` clamping.
+
+**3. Changing the aspect ratio did not resize the window.** Picking a fixed
+ratio widened the framebuffer but left the window its old shape, so the result
+was just stretched to fit — the setting looked like it did nothing useful.
+`I_ReshapeWindowForAspect` now resizes the window to the chosen ratio, keeping
+the current height (and backing the height off instead if the derived width
+would not fit the display). `auto` is deliberately exempt — there the window is
+the *input*, so resizing it would be circular — as is fullscreen, where the
+display shape is fixed. The ratio table is factored into `I_FixedAspect`, shared
+with `I_DeriveWidescreen`.
+
+Verified: demo playback across all 5 aspect modes x 5 screen-size tiers (25
+combinations), all clean; and the start map now loads instead of faulting,
+reproduced beforehand by running the menu's own `use_startmap 1; mn_newgame`
+command sequence.
+
 ### Widescreen: fix crash on aspect change, menu background and centring
 
 Three reported bugs.
