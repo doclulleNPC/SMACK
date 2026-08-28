@@ -340,6 +340,7 @@ static int MN_DrawMenuItem(menuitem_t *item, int x, int y, int colour,
 void MN_DrawMenu(menu_t *menu)
 {
   int y;
+  int menu_x;
   int itemnum;
   char *helpmsg = "";
   
@@ -351,6 +352,12 @@ void MN_DrawMenu(menu_t *menu)
   drawing_menu = menu;
   
   y = menu->y;
+
+  // Widescreen: menu->x is a fixed position in the classic 320-wide layout
+  // space, so on a widened screen the whole menu would sit off to the left.
+  // deltawidth re-centres it; it is 0 at the classic aspect ratio, leaving
+  // every menu exactly where it was.
+  menu_x = menu->x + deltawidth;
   
   for(itemnum = 0; menu->menuitems[itemnum].type != it_end; itemnum++)
     {
@@ -365,7 +372,7 @@ void MN_DrawMenu(menu_t *menu)
 	MN_DrawMenuItem
 	(
 	 &menu->menuitems[itemnum],
-	 menu->x,
+	 menu_x,
 	 y,
 	 item_colour,
 	 menu->flags & mf_skullmenu || menu->flags & mf_leftaligned
@@ -375,7 +382,7 @@ void MN_DrawMenu(menu_t *menu)
       if(menu->flags & mf_skullmenu && menu->selected == itemnum)
         V_DrawPatch
 	  (
-	   menu->x - 30,                         // 30 left
+	   menu_x - 30,                          // 30 left
 	   y+(item_height-SKULL_HEIGHT)/2,       // midpoint
 	   0, skulls[(menutime/BLINK_TIME) % 2]
 	   );
@@ -409,7 +416,7 @@ void MN_DrawMenu(menu_t *menu)
 	}
     }
 
-  MN_WriteTextColoured(helpmsg, CR_GOLD, 10, 192);
+  MN_WriteTextColoured(helpmsg, CR_GOLD, 10 + deltawidth, 192);  // widescreen
 }
 
         // drawer
@@ -858,25 +865,35 @@ void MN_DrawBackground(char* patchname, byte *back_dest)
 	}
 #endif
   
-  // while this pixel-doubles it
-  for (y = 0 ; y < SCREENHEIGHT ; src = ((++y & 63)<<6) + back_src,
-	 back_dest += SCREENWIDTH*2)
-    for (x = 0 ; x < SCREENWIDTH/64 ; x++)
+              // while this pixel-doubles it
+      //
+      // Widescreen: this used to advance in whole 64-wide tiles,
+      // `x < SCREENWIDTH/64`, silently assuming SCREENWIDTH is a multiple of
+      // 64. It is at 320, but not at e.g. 356 or 467: the remainder column
+      // went undrawn AND the row advance came up short by that remainder
+      // every line, so the flat sheared diagonally and trailed garbage down
+      // the right-hand side. Tiling per pixel is correct for any width.
       {
-	int i = 63;
-	do
-	  back_dest[i*2] = back_dest[i*2+SCREENWIDTH*2] =
-	    back_dest[i*2+1] = back_dest[i*2+SCREENWIDTH*2+1] = src[i];
-	while (--i>=0);
-	back_dest += 128;
+        const int rowbytes = SCREENWIDTH*2;      // one physical row at hires
+        for (y = 0 ; y < SCREENHEIGHT ; y++)
+          {
+            byte *r0 = back_dest + (y*2)*rowbytes;
+            byte *r1 = r0 + rowbytes;
+            src = back_src + ((y & 63)<<6);
+            for (x = 0 ; x < SCREENWIDTH ; x++)
+              {
+                const byte c = src[x & 63];
+                r0[x*2] = r0[x*2+1] = r1[x*2] = r1[x*2+1] = c;
+              }
+          }
       }
   else
-    for (y = 0 ; y < SCREENHEIGHT ; src = ((++y & 63)<<6) + back_src)
-      for (x = 0 ; x < SCREENWIDTH/64 ; x++)
-	{
-	  memcpy (back_dest,back_src+((y & 63)<<6),64);
-	  back_dest += 64;
-	}
+    for (y = 0 ; y < SCREENHEIGHT ; y++)
+      {
+        src = back_src + ((y & 63)<<6);
+        for (x = 0 ; x < SCREENWIDTH ; x++)
+          back_dest[y*SCREENWIDTH + x] = src[x & 63];
+      }
 }
 
         // sf:
@@ -900,24 +917,34 @@ void MN_DrawDistortedBackground(char* patchname, byte *back_dest)
 #endif
 
               // while this pixel-doubles it
-      for (y = 0 ; y < SCREENHEIGHT ; src = ((++y & 63)<<6) + back_src,
-	     back_dest += SCREENWIDTH*2)
-	for (x = 0 ; x < SCREENWIDTH/64 ; x++)
-	  {
-	    int i = 63;
-	    do
-	      back_dest[i*2] = back_dest[i*2+SCREENWIDTH*2] =
-		back_dest[i*2+1] = back_dest[i*2+SCREENWIDTH*2+1] = src[i];
-	    while (--i>=0);
-	    back_dest += 128;
-	  }
+      //
+      // Widescreen: this used to advance in whole 64-wide tiles,
+      // `x < SCREENWIDTH/64`, silently assuming SCREENWIDTH is a multiple of
+      // 64. It is at 320, but not at e.g. 356 or 467: the remainder column
+      // went undrawn AND the row advance came up short by that remainder
+      // every line, so the flat sheared diagonally and trailed garbage down
+      // the right-hand side. Tiling per pixel is correct for any width.
+      {
+        const int rowbytes = SCREENWIDTH*2;      // one physical row at hires
+        for (y = 0 ; y < SCREENHEIGHT ; y++)
+          {
+            byte *r0 = back_dest + (y*2)*rowbytes;
+            byte *r1 = r0 + rowbytes;
+            src = back_src + ((y & 63)<<6);
+            for (x = 0 ; x < SCREENWIDTH ; x++)
+              {
+                const byte c = src[x & 63];
+                r0[x*2] = r0[x*2+1] = r1[x*2] = r1[x*2+1] = c;
+              }
+          }
+      }
   else
-    for (y = 0 ; y < SCREENHEIGHT ; src = ((++y & 63)<<6) + back_src)
-      for (x = 0 ; x < SCREENWIDTH/64 ; x++)
-	{
-	  memcpy (back_dest,back_src+((y & 63)<<6),64);
-	  back_dest += 64;
-	}
+    for (y = 0 ; y < SCREENHEIGHT ; y++)
+      {
+        src = back_src + ((y & 63)<<6);
+        for (x = 0 ; x < SCREENWIDTH ; x++)
+          back_dest[y*SCREENWIDTH + x] = src[x & 63];
+      }
 }
 
         // activate main menu

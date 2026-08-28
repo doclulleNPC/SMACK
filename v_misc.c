@@ -445,33 +445,43 @@ void V_ClassicFPSDrawer()
 void V_Init(void)
 {
   // lowres removed: always allocate hi-res screen buffers. size is in bytes
-  // for a SCREENWIDTH<<hires x SCREENHEIGHT<<hires buffer: the *4 stands in
-  // for (1<<hires)*(1<<hires) since hires is always exactly 1.
+  // for a MAX_SCREENWIDTH<<hires x MAX_SCREENHEIGHT<<hires buffer: the *4
+  // stands in for (1<<hires)*(1<<hires) since hires is always exactly 1.
   //
-  // Widescreen (linux/i_video.c): SCREENWIDTH can grow between calls -- once
-  // at startup at the classic width, again once the real window/display
-  // aspect ratio is known -- so this always reallocates rather than assuming
-  // a fixed size, and frees the previous buffers first so repeated calls
-  // (toggling fullscreen, etc.) don't leak one screens[] set per call.
-  int size = SCREENWIDTH*SCREENHEIGHT*4;
+  // Widescreen: sized to the MAX_* ceiling and allocated exactly once, rather
+  // than to the live SCREENWIDTH and reallocated whenever the aspect ratio
+  // changes. Two reasons, both learned the hard way:
+  //
+  //  - Exact sizing left *zero* slack. Several draw paths land on the very
+  //    last byte of screens[0] by construction -- the 3D view (ylookup's last
+  //    row + columnofs' last column) and the status bar's V_CopyRect both do.
+  //    That is survivable when the width never changes, but any place that
+  //    was even one byte optimistic corrupted the CRT heap once the width
+  //    grew, and the fault then surfaced far away, inside an unrelated
+  //    free() -- which is exactly how the "changing aspect ratio crashes"
+  //    bug presented.
+  //  - Reallocating mid-run means every cached pointer into screens[]
+  //    (ylookup[] above all) dangles until the renderer next rebuilds it.
+  //
+  // This is how the renderer's other resolution-dependent arrays are already
+  // sized (MAX_SCREENWIDTH in r_draw.c, r_plane.c, r_things.c ...), so it is
+  // also the consistent choice. Costs ~4.9MB of address space, once.
   static byte *s;
+  int size;
 
-#ifdef DJGPP
   if (s)
-    free(s), destroy_bitmap(screens0_bitmap);
-#else
-  free(s);
-  free(screens[0]);
-#endif
+    return;                       // already allocated; nothing varies now
+
+  size = MAX_SCREENWIDTH*MAX_SCREENHEIGHT*4;
 
   screens[3] = (screens[2] = (screens[1] = s = calloc(size,3)) + size) + size;
 
 #ifdef DJGPP
   screens0_bitmap =
-    create_bitmap_ex(8, SCREENWIDTH << hires, SCREENHEIGHT << hires);
+    create_bitmap_ex(8, MAX_SCREENWIDTH << hires, MAX_SCREENHEIGHT << hires);
   memset(screens[0] = screens0_bitmap->line[0], 0, size);
 #else
-  screens[0] = malloc(size);
+  screens[0] = calloc(size, 1);
 #endif
 
 }

@@ -1142,7 +1142,17 @@ void ST_Init(void)
 {
   ST_loadData();
   // killough 11/98: allocate enough for hires
-  screens[4] = Z_Malloc(ST_WIDTH*ST_HEIGHT*4, PU_STATIC, 0);
+  //
+  // Widescreen: sized by MAX_SCREENWIDTH, not ST_WIDTH. This is the status
+  // bar's off-screen scratch buffer, but V_DrawPatch and V_CopyRect address
+  // every screens[] buffer with a SCREENWIDTH row stride -- so its real
+  // requirement is SCREENWIDTH (not ST_WIDTH) * ST_HEIGHT * 4. At the classic
+  // 320 those are equal and it fit exactly, with zero slack; once SCREENWIDTH
+  // could exceed 320 every status bar draw overran it and corrupted the zone
+  // heap, which then faulted on an unrelated Z_Free later (it showed up as a
+  // crash when changing the aspect ratio). Sizing to the ceiling keeps it
+  // valid for any width without needing a realloc when the aspect changes.
+  screens[4] = Z_Malloc(MAX_SCREENWIDTH*ST_HEIGHT*4, PU_STATIC, 0);
 }
 
 /***********************

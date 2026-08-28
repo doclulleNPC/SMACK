@@ -14,6 +14,48 @@ SDL3 Linux backend under `linux/`.
 
 ## Unreleased
 
+### Widescreen: fix crash on aspect change, menu background and centring
+
+Three reported bugs.
+
+**1. Changing the aspect ratio crashed the game.** Two exactly-sized buffers
+overflowed once `SCREENWIDTH` could exceed 320, corrupting the CRT heap; the
+fault then surfaced later inside an unrelated `free()`, with no `I_Error` and no
+SIGSEGV — the process just died, which is what made it hard to place.
+
+- `screens[4]`, the status bar's off-screen scratch buffer, was allocated
+  `ST_WIDTH*ST_HEIGHT*4` in `ST_Init`. But `V_DrawPatch`/`V_CopyRect` address
+  every `screens[]` buffer with a **`SCREENWIDTH`** row stride, so its real
+  requirement is `SCREENWIDTH*ST_HEIGHT*4`. At 320 those are equal and it fit
+  exactly, with zero slack. Now sized to `MAX_SCREENWIDTH`.
+- `V_Init` sized `screens[0..3]` to the live `SCREENWIDTH` and *reallocated*
+  them on every aspect change. That was doubly bad: the buffers had zero slack
+  (the 3D view's last `ylookup` row plus last `columnofs` column lands on the
+  final byte by construction, as does the status bar's `V_CopyRect`), and
+  reallocating left every cached pointer into `screens[]` — `ylookup[]` above
+  all — dangling until the renderer next rebuilt it. `V_Init` now allocates
+  once, at the `MAX_SCREENWIDTH`/`MAX_SCREENHEIGHT` ceiling, matching how the
+  renderer's other resolution-dependent arrays are already sized. ~4.9MB, once.
+
+**2. The menu background was disturbed.** `MN_DrawBackground` and
+`MN_DrawDistortedBackground` tiled the 64x64 flat with `x < SCREENWIDTH/64`,
+silently assuming `SCREENWIDTH` is a multiple of 64. True at 320, false at 356
+or 467: the remainder column went undrawn *and* the row advance came up short by
+that remainder every line, so the flat sheared diagonally and trailed garbage
+down the right-hand side. Both now tile per pixel, correct for any width.
+
+**3. The menu was not centred.** `menu->x` is a fixed position in the classic
+320-wide layout space, so on a widened screen the whole menu sat off to the
+left. `MN_DrawMenu` now offsets its origin (and the selection skull, and the
+help line) by `deltawidth`.
+
+Verified: 35 consecutive aspect changes in-game with no crash (previously it
+died on the second), and demo playback across every combination of 4 aspect
+modes x 3 screen-size tiers, all clean.
+
+Not audited for centring beyond the main menu: the custom menu drawers
+(`menu->drawer`), the popup boxes in `mn_misc.c`, and the automap text overlays.
+
 ### Widescreen: centre the status bar, game visible either side
 
 At screensize 7 (the default, `setblocks == 10`) the 3D view now fills the
